@@ -5,12 +5,34 @@ Utilizes an iterative Radix-2 Cooley-Tukey algorithm tuned for SIMD.
 
 To my knowledge, it is the fastest FFT implementation that is freely and publicly available for .NET
 
+## Usage
+
+```c#
+using Aelian.FFT;
+
+// Call Initialize () once when your program is loading
+FastFourierTransform.Initialize ();
+
+var Buffer = new double[4096];
+// Fill Buffer with meaningful data here
+FastFourierTransform.RealFFT ( Buffer, /* forward: */ true );
+```
+
+> Note that Aelian.FFT utilizes an in-place algorithm, which means your input data is overwritten with output data. This saves costly memory allocation and memory access penalties, but might not always be the most convenient or intuitive approach. 
+
+## Limitations
+
+Certain optimizations in Aelian.FFT consist of precomputing values in tables. These tables take up some memory and take a short time to initialize. They have a fixed maximum size that limits the maximum input size for the FFT. 
+
+The current limit for `Constants.MaxTableDepth` is 18, which in turn limits the maximum FFT input to 65,536 samples (or 32,768 complex values). Increasing the value of `Constants.MaxTableDepth` also increases the memory usage exponentially, so while it is certainly possible to process larger FFT's by increasing this value, it is currently set to what I considered to be a reasonable limit.
+
+In the future I might make this value configurable.
+
 ## Benchmarks comparing Aelian.FFT to other .NET FFT implementations
 
 Each benchmark represents running 10,000 transforms.
 
-Benchmarks ran on a 11th Gen Intel Core i9-11900K 3.50GHz, 1 CPU, 16 logical and 8 physical cores
-Using .NET 8.0.5 (8.0.524.21615), X64 RyuJIT AVX2
+Benchmarks ran on a 11th Gen Intel Core i9-11900K 3.50GHz, 1 CPU, 16 logical and 8 physical cores, using .NET 8.0.5 (8.0.524.21615), X64 RyuJIT AVX2
 
 
 |                   Method |    N |       Mean |    Error |   StdDev | Ratio | RatioSD |
