@@ -8,6 +8,13 @@
 
 	<ItemGroup>
 		<PackageReference Include="BenchmarkDotNet" Version="0.13.6" />
+		
+		<PackageReference Include="FftSharp" Version="2.1.0" />
+		<PackageReference Include="NAudio" Version="2.2.1" />
+		<PackageReference Include="MathNet.Numerics" Version="5.0.0" />
+		
+		<PackageReference Include="Accord" Version="3.8.0" />
+		<PackageReference Include="NWaves" Version="0.9.6" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -73,7 +73,7 @@ namespace Aelian.FFT
 
 		//========================================================================
 		// VectorizedInPlaceIterativeFFT
-		// Vectorized iterative Radix-2 Cooley-Tukey FFT
+		// Vectorized in-place iterative Radix-2 Cooley-Tukey FFT
 		//========================================================================
 
 		[Flags]
@@ -119,7 +119,8 @@ namespace Aelian.FFT
 
 			var LogN = MathUtils.ILog2 ( n );
 
-			Debug.Assert ( LogN + 1 < Constants.MaxTableDepth, $"Constants.MaxTableDepth is too low to process DFT of size {n}. Should be at least {LogN + 2}" );
+			if ( LogN + 1 >= Constants.MaxTableDepth )
+				throw new ArgumentException ( $"Constants.MaxTableDepth is too low to process DFT of size {n}. Should be at least {LogN + 2}" );
 
 			var RealRootsOfUnity = forward ? _RealRootsOfUnity : _RealInverseRootsOfUnity;
 			var ImagRootsOfUnity = forward ? _ImagRootsOfUnity : _ImagInverseRootsOfUnity;
@@ -246,7 +247,7 @@ namespace Aelian.FFT
 
 		//========================================================================
 		// RealFFT
-		// Vectorized iterative Radix-2 Cooley-Tukey FFT for real valued data
+		// Vectorized in-place iterative Radix-2 Cooley-Tukey FFT for real valued data
 		//========================================================================
 
 		public static void RealFFT ( Span<double> buffer, bool forward, FftFlags flags = FftFlags.None )
