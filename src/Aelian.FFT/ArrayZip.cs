@@ -13,11 +13,6 @@ namespace Aelian.FFT
 		private static int[][][] _UnZipCycleDecompositions;
 		private static int[][][] _ZipCycleDecompositions;
 
-		//static ArrayZip ()
-		//	{
-		//	CalculateUnZipCycleDecompositions ();
-		//	}
-
 		public static void CalculateUnZipCycleDecompositions ()
 			{
 			_UnZipCycleDecompositions = new int[Constants.MaxTableDepth + 1][][];

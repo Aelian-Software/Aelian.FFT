@@ -14,6 +14,9 @@ namespace Aelian.FFT
 		private static double[][] _ImagRootsOfUnity;
 		private static double[][] _ImagInverseRootsOfUnity;
 
+		/// <summary>
+		/// Call this function once when your application is loading
+		/// </summary>
 		public static void Initialize () 
 			{
 			// Precalculate tables
@@ -109,7 +112,9 @@ namespace Aelian.FFT
 
 			const int VectorSizeShift = 2;
 			const int VectorSize = 1 << VectorSizeShift;
-			Debug.Assert ( Vector<double>.Count == VectorSize );
+			Debug.Assert ( Vector256<double>.Count == VectorSize );
+
+			//Vector512.IsHardwareAccelerated
 
 			if ( n != complexImagValues.Length )
 				throw new ArgumentException ( "Imaginary and real buffer sizes must be the same", nameof ( complexImagValues ) );
@@ -127,8 +132,8 @@ namespace Aelian.FFT
 
 			IndexReversal.BitReverseArrayInPlace ( complexRealValues, complexImagValues, LogN );
 
-			var VecRealValues = MemoryMarshal.Cast<double, Vector<double>> ( complexRealValues );
-			var VecImagValues = MemoryMarshal.Cast<double, Vector<double>> ( complexImagValues );
+			var VecRealValues = MemoryMarshal.Cast<double, Vector256<double>> ( complexRealValues );
+			var VecImagValues = MemoryMarshal.Cast<double, Vector256<double>> ( complexImagValues );
 
 			// Do the iterations that are too short to vectorize the non-SIMD way
 
@@ -189,14 +194,14 @@ namespace Aelian.FFT
 			// Vectorized
 
 			int VecIndexEven, VecIndexOdd;
-			Vector<double> VecEvenReal, VecEvenImag, VecOddReal, VecOddImag, VecWmReal, VecWmImag, VecTReal, VecTImag;
+			Vector256<double> VecEvenReal, VecEvenImag, VecOddReal, VecOddImag, VecWmReal, VecWmImag, VecTReal, VecTImag;
 
 			for ( int s = 3; s <= LogN; s++ )
 				{
 				var IterRealRootsOfUnity = RealRootsOfUnity[s].AsSpan ();
 				var IterImagRootsOfUnity = ImagRootsOfUnity[s].AsSpan ();
-				var VecRealRootsOfUnity = MemoryMarshal.Cast<double, Vector<double>> ( IterRealRootsOfUnity );
-				var VecImagRootsOfUnity = MemoryMarshal.Cast<double, Vector<double>> ( IterImagRootsOfUnity );
+				var VecRealRootsOfUnity = MemoryMarshal.Cast<double, Vector256<double>> ( IterRealRootsOfUnity );
+				var VecImagRootsOfUnity = MemoryMarshal.Cast<double, Vector256<double>> ( IterImagRootsOfUnity );
 
 				var m = 1 << s;
 				var HalfM = m >> 1;
@@ -233,7 +238,7 @@ namespace Aelian.FFT
 				{
 				// TODO: handle cases where n < 4
 				var VectorizedOpCount = n >> VectorSizeShift;
-				var Divisor = new Vector<double> ( ( 1.0 / n ) * normalizeFactor );
+				var Divisor = Vector256.Create<double> ( ( 1.0 / n ) * normalizeFactor );
 
 				Debug.Assert ( n % VectorSize == 0 );
 
