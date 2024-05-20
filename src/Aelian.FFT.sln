@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34728.123
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Aelian.FFT", "Aelian.FFT\Aelian.FFT.csproj", "{7254C4BC-2905-416D-8D19-603AE77280BE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Benchmarks", "Benchmarks\Benchmarks.csproj", "{446A356B-4625-4826-B885-65401DFCE8B0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "Tests\Tests.csproj", "{33604AC0-105D-40F9-8936-F067BB3D15FC}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7254C4BC-2905-416D-8D19-603AE77280BE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7254C4BC-2905-416D-8D19-603AE77280BE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7254C4BC-2905-416D-8D19-603AE77280BE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7254C4BC-2905-416D-8D19-603AE77280BE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{446A356B-4625-4826-B885-65401DFCE8B0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{446A356B-4625-4826-B885-65401DFCE8B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{446A356B-4625-4826-B885-65401DFCE8B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{446A356B-4625-4826-B885-65401DFCE8B0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{33604AC0-105D-40F9-8936-F067BB3D15FC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{33604AC0-105D-40F9-8936-F067BB3D15FC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{33604AC0-105D-40F9-8936-F067BB3D15FC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{33604AC0-105D-40F9-8936-F067BB3D15FC}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {CAF16AA5-609D-4974-B2A6-F58F48D56DCA}
+	EndGlobalSection
+EndGlobal
