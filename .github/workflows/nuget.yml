@@ -13,12 +13,12 @@ jobs:
       # - name: Setup dotnet
       #   uses: actions/setup-dotnet@v1
       #   with:
-      #     dotnet-version: 3.1.200
+      #     dotnet-version: 8.0.0
 
       # Publish
       - name: publish on version change
         id: publish_nuget
-        uses: brandedoutcast/publish-nuget@v2
+        uses: Rebel028/publish-nuget@v2.8.0
         with:
           # Filepath of the project to be packaged, relative to root of repository
           PROJECT_FILE_PATH: src/Aelian.FFT/Aelian.FFT.csproj
