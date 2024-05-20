@@ -1,5 +1,7 @@
 # Aelian.FFT
 
+[![GitHub](https://img.shields.io/github/license/Aelian-Software/Aelian.FFT)](https://github.com/naudio/NAudio/blob/master/license.txt) [![Nuget](https://img.shields.io/nuget/v/Aelian.FFT)](https://www.nuget.org/packages/Aelian.FFT/)
+
 A highly optimized fast fourier transform implementation for .NET 8 and up, written in 100% pure c#, so there are no dependencies on native libraries.
 
 It utilizes an in-place iterative Radix-2 Cooley-Tukey algorithm tuned for SIMD.
