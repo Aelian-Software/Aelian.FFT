@@ -5,11 +5,8 @@ An optimized SIMD FFT implementation for .NET 8 and up.
 Benchmarks comparing Aelian.FFT to other .NET FFT implementations
 
 ```
-BenchmarkDotNet v0.13.6, Windows 11 (10.0.22631.3447)
 11th Gen Intel Core i9-11900K 3.50GHz, 1 CPU, 16 logical and 8 physical cores
-.NET SDK 8.0.204
-  [Host]     : .NET 8.0.5 (8.0.524.21615), X64 RyuJIT AVX2
-  DefaultJob : .NET 8.0.5 (8.0.524.21615), X64 RyuJIT AVX2
+.NET 8.0.5 (8.0.524.21615), X64 RyuJIT AVX2
 
 
 |                 Method |    N |     Mean |   Error |  StdDev | Ratio |
