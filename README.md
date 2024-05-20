@@ -1,9 +1,10 @@
 # Aelian.FFT
 
-A highly optimized fast fourier transform implementation for .NET 8 and up.
-Utilizes an iterative Radix-2 Cooley-Tukey algorithm tuned for SIMD.
+A highly optimized fast fourier transform implementation for .NET 8 and up, written in 100% pure c#, so there are no dependencies on native libraries.
 
-To my knowledge, it is the fastest FFT implementation that is freely and publicly available for .NET
+It utilizes an in-place iterative Radix-2 Cooley-Tukey algorithm tuned for SIMD.
+
+To my knowledge, it is the fastest .NET FFT implementation that is freely and publicly available.
 
 ## Usage
 
