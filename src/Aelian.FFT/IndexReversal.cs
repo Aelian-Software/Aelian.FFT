@@ -8,7 +8,19 @@ namespace Aelian.FFT
 	internal static class IndexReversal
 		{
 		private static int[][] _BitReverseIndices;
-		private static Tuple<int, int>[][] _BitReverseSwapIndices;
+		private static SwapPair[][] _BitReverseSwapIndices;
+
+		private struct SwapPair
+			{
+			public readonly int IndexA;
+			public readonly int IndexB;
+
+			public SwapPair ( int indexA, int indexB )
+				{
+				IndexA = indexA;
+				IndexB = indexB;
+				}
+			}
 
 		private static int ReverseBitOrder ( int input, int bitCount )
 			{
@@ -29,7 +41,7 @@ namespace Aelian.FFT
 		public static void CalculateBitReverseIndices ()
 			{
 			_BitReverseIndices = new int[Constants.MaxTableDepth][];
-			_BitReverseSwapIndices = new Tuple<int, int>[Constants.MaxTableDepth][];
+			_BitReverseSwapIndices = new SwapPair[Constants.MaxTableDepth][];
 
 			for ( int i = 0; i < Constants.MaxTableDepth; i++ )
 				{
@@ -37,7 +49,7 @@ namespace Aelian.FFT
 
 				_BitReverseIndices[i] = new int[N];
 				var Touched = new BitArray ( N );
-				var Swaps = new List<Tuple<int, int>> ();
+				var Swaps = new List<SwapPair> ();
 
 				for ( int j = 0; j < N; j++ )
 					{
@@ -46,7 +58,7 @@ namespace Aelian.FFT
 					_BitReverseIndices[i][j] = NewIndex;
 
 					if ( NewIndex != j && !Touched[NewIndex] && !Touched[j] )
-						Swaps.Add ( new Tuple<int, int> ( j, NewIndex ) );
+						Swaps.Add ( new SwapPair ( j, NewIndex ) );
 
 					_BitReverseIndices[i][j] = NewIndex;
 
@@ -58,6 +70,13 @@ namespace Aelian.FFT
 				}
 			}
 
+		/// <summary>
+		/// Shuffles the selements of two arrays so that each element ends up at the index that is the bit-reverse of its original index
+		/// </summary>
+		/// <typeparam name="T">The array type</typeparam>
+		/// <param name="arrayA">The first array</param>
+		/// <param name="arrayB">The second array</param>
+		/// <param name="logArraySize">The binary logarithm of the size of the arrays</param>
 		[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
 		public static void BitReverseArrayInPlace<T> ( Span<T> arrayA, Span<T> arrayB, int logArraySize )
 			{
@@ -65,13 +84,13 @@ namespace Aelian.FFT
 
 			foreach ( var Swap in BitReverseSwaps )
 				{
-				var TmpA = arrayA[Swap.Item1];
-				arrayA[Swap.Item1] = arrayA[Swap.Item2];
-				arrayA[Swap.Item2] = TmpA;
+				var TmpA = arrayA[Swap.IndexA];
+				arrayA[Swap.IndexA] = arrayA[Swap.IndexB];
+				arrayA[Swap.IndexB] = TmpA;
 
-				var TmpB = arrayB[Swap.Item1];
-				arrayB[Swap.Item1] = arrayB[Swap.Item2];
-				arrayB[Swap.Item2] = TmpB;
+				var TmpB = arrayB[Swap.IndexA];
+				arrayB[Swap.IndexA] = arrayB[Swap.IndexB];
+				arrayB[Swap.IndexB] = TmpB;
 				}
 			}
 		}
