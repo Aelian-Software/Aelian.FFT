@@ -72,16 +72,16 @@ namespace Aelian.FFT
 		/// and all odd indices end up at the end of the array.
 		/// So, 0 1 2 3 4 5 6 7 becomes 0 2 4 6 1 3 5 7
 		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="elements"></param>
+		/// <typeparam name="T">the array data type</typeparam>
+		/// <param name="elements">The array to unzip</param>
 		[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
 		public static void UnZipInPlacePow2<T> ( Span<T> elements ) => PermuteInPlacePow2 ( elements, _UnZipCycleDecompositions );
 
 		/// <summary>
 		/// This method is the inverse of UnZipInPlacePow2
 		/// </summary>
-		/// <typeparam name="T"></typeparam>
-		/// <param name="elements"></param>
+		/// <typeparam name="T">the array data type</typeparam>
+		/// <param name="elements">The array to zip</param>
 		[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
 		public static void ZipInPlacePow2<T> ( Span<T> elements ) => PermuteInPlacePow2 ( elements, _ZipCycleDecompositions );
 
