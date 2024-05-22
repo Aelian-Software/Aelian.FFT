@@ -1,3 +1,5 @@
+#define BENCHMARK_OTHERS
+
 using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -39,7 +41,7 @@ namespace Benchmarks
 				}
 			}
 
-		private unsafe void CopySourceData<T> ( NAudio.Dsp.Complex[] toBuffer )
+		private void CopySourceData<T> ( NAudio.Dsp.Complex[] toBuffer )
 			where T : unmanaged
 			{
 			var CommonSize = Math.Min ( ComplexInputData.Length, toBuffer.Length );
@@ -53,7 +55,7 @@ namespace Benchmarks
 		\* ------------------------------------------------------------*/
 
 		[Benchmark ( Baseline = true )]
-		public unsafe void Aelian_FFT ()
+		public void Aelian_FFT ()
 			{
 			var Buffer = new Complex[ComplexInputData.Length];
 
@@ -64,7 +66,7 @@ namespace Benchmarks
 			}
 
 		[Benchmark]
-		public unsafe void Aelian_FFT_Inverse ()
+		public void Aelian_FFT_Inverse ()
 			{
 			var Buffer = new Complex[ComplexInputData.Length];
 
@@ -74,12 +76,14 @@ namespace Benchmarks
 				Aelian.FFT.FastFourierTransform.FFT ( Buffer, false );
 			}
 
+#if BENCHMARK_OTHERS
+
 		/*--------------------------------------------------------------\
 		| Math.NET                                                      |
 		\* ------------------------------------------------------------*/
 
 		[Benchmark]
-		public unsafe void MathNet_FFT ()
+		public void MathNet_FFT ()
 			{
 			var Buffer = new Complex[ComplexInputData.Length];
 
@@ -90,7 +94,7 @@ namespace Benchmarks
 			}
 
 		[Benchmark]
-		public unsafe void MathNet_FFT_Inverse ()
+		public void MathNet_FFT_Inverse ()
 			{
 			var Buffer = new Complex[ComplexInputData.Length];
 
@@ -105,7 +109,7 @@ namespace Benchmarks
 		\* ------------------------------------------------------------*/
 
 		[Benchmark]
-		public unsafe void Lomont_FFT ()
+		public void Lomont_FFT ()
 			{
 			var Lomont = new Lomont.LomontFFT () { A = 1, B = -1 };
 			var Buffer = new double[ComplexInputData.Length * 2];
@@ -117,7 +121,7 @@ namespace Benchmarks
 			}
 
 		[Benchmark]
-		public unsafe void Lomont_FFT_Inverse ()
+		public void Lomont_FFT_Inverse ()
 			{
 			var Lomont = new Lomont.LomontFFT () { A = 1, B = -1 };
 			var Buffer = new double[ComplexInputData.Length * 2];
@@ -135,7 +139,7 @@ namespace Benchmarks
 		\* ------------------------------------------------------------*/
 
 		[Benchmark]
-		public unsafe void NAudio_FFT ()
+		public void NAudio_FFT ()
 			{
 			var Buffer = new NAudio.Dsp.Complex[ComplexInputData.Length];
 			var M = Aelian.FFT.MathUtils.ILog2 ( Buffer.Length );
@@ -147,7 +151,7 @@ namespace Benchmarks
 			}
 
 		[Benchmark]
-		public unsafe void NAudio_FFT_Inverse ()
+		public void NAudio_FFT_Inverse ()
 			{
 			var Buffer = new NAudio.Dsp.Complex[ComplexInputData.Length / 2];
 			var M = Aelian.FFT.MathUtils.ILog2 ( Buffer.Length );
@@ -163,7 +167,7 @@ namespace Benchmarks
 		\* ------------------------------------------------------------*/
 
 		[Benchmark]
-		public unsafe void FftSharp_FFT ()
+		public void FftSharp_FFT ()
 			{
 			var Buffer = new Complex[ComplexInputData.Length];
 
@@ -174,7 +178,7 @@ namespace Benchmarks
 			}
 
 		[Benchmark]
-		public unsafe void FftSharp_FFT_Inverse ()
+		public void FftSharp_FFT_Inverse ()
 			{
 			var Buffer = new Complex[ComplexInputData.Length];
 
@@ -183,5 +187,7 @@ namespace Benchmarks
 			for ( int i = 0; i < RunCount; i++ )
 				FftSharp.FFT.Inverse ( Buffer );
 			}
+
+#endif
 		}
 	}

@@ -1,3 +1,5 @@
+#define BENCHMARK_OTHERS
+
 using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -44,7 +46,7 @@ namespace Benchmarks
 		\* ------------------------------------------------------------*/
 
 		[Benchmark ( Baseline = true )]
-		public unsafe void Aelian_RealFFT ()
+		public void Aelian_RealFFT ()
 			{
 			var Buffer = new double[RealInputData.Length];
 
@@ -55,7 +57,7 @@ namespace Benchmarks
 			}
 
 		[Benchmark]
-		public unsafe void Aelian_RealFFT_Inverse ()
+		public void Aelian_RealFFT_Inverse ()
 			{
 			var Buffer = new double[RealInputData.Length];
 
@@ -65,12 +67,14 @@ namespace Benchmarks
 				Aelian.FFT.FastFourierTransform.RealFFT ( Buffer, false );
 			}
 
+#if BENCHMARK_OTHERS
+
 		/*--------------------------------------------------------------\
 		| Math.NET                                                      |
 		\* ------------------------------------------------------------*/
 
 		[Benchmark]
-		public unsafe void MathNet_RealFFT ()
+		public void MathNet_RealFFT ()
 			{
 			var N = RealInputData.Length;
 			var Buffer = new double[N + 2]; // MathNet.Numerics.IntegralTransforms.Fourier.ForwardReal demands that buffer size be N+2
@@ -82,7 +86,7 @@ namespace Benchmarks
 			}
 
 		[Benchmark]
-		public unsafe void MathNet_RealFFT_Inverse ()
+		public void MathNet_RealFFT_Inverse ()
 			{
 			var N = RealInputData.Length;
 			var Buffer = new double[N + 2]; // MathNet.Numerics.IntegralTransforms.Fourier.InverseReal demands that buffer size be N+2
@@ -98,7 +102,7 @@ namespace Benchmarks
 		\* ------------------------------------------------------------*/
 
 		[Benchmark]
-		public unsafe void Lomont_RealFFT ()
+		public void Lomont_RealFFT ()
 			{
 			var Lomont = new Lomont.LomontFFT () { A = 1, B = -1 };
 			var Buffer = new double[RealInputData.Length];
@@ -110,7 +114,7 @@ namespace Benchmarks
 			}
 
 		[Benchmark]
-		public unsafe void Lomont_RealFFT_Inverse ()
+		public void Lomont_RealFFT_Inverse ()
 			{
 			var Lomont = new Lomont.LomontFFT () { A = 1, B = -1 };
 			var Buffer = new double[RealInputData.Length];
@@ -130,7 +134,7 @@ namespace Benchmarks
 		\* ------------------------------------------------------------*/
 
 		[Benchmark]
-		public unsafe void NAudio_RealFFT ()
+		public void NAudio_RealFFT ()
 			{
 			var Buffer = new NAudio.Dsp.Complex[RealInputData.Length / 2];
 			var M = Aelian.FFT.MathUtils.ILog2 ( Buffer.Length );
@@ -142,7 +146,7 @@ namespace Benchmarks
 			}
 
 		[Benchmark]
-		public unsafe void NAudio_RealFFT_Inverse ()
+		public void NAudio_RealFFT_Inverse ()
 			{
 			var Buffer = new NAudio.Dsp.Complex[RealInputData.Length / 2];
 			var M = Aelian.FFT.MathUtils.ILog2 ( Buffer.Length );
@@ -158,7 +162,7 @@ namespace Benchmarks
 		\* ------------------------------------------------------------*/
 
 		[Benchmark]
-		public unsafe void FftSharp_RealFFT ()
+		public void FftSharp_RealFFT ()
 			{
 			var Buffer = new double[RealInputData.Length];
 
@@ -169,7 +173,7 @@ namespace Benchmarks
 			}
 
 		[Benchmark]
-		public unsafe void FftSharp_RealFFT_Inverse ()
+		public void FftSharp_RealFFT_Inverse ()
 			{
 			var Buffer = new Complex[RealInputData.Length / 2 + 1]; // FftSharp.FFT.InverseReal demands spectrum size be a power of 2 + 1
 
@@ -178,5 +182,7 @@ namespace Benchmarks
 			for ( int i = 0; i < RunCount; i++ )
 				FftSharp.FFT.InverseReal ( Buffer );
 			}
+
+#endif
 		}
 	}
