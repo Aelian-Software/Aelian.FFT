@@ -34,6 +34,11 @@ namespace Aelian.FFT
 	{
 	internal static class MathUtils
 		{
+		/// <summary>
+		/// A fast (but dirty) integer binary logarithm implementation.
+		/// </summary>
+		/// <param name="number">The number to get the binary logarithm of.</param>
+		/// <returns>The binary logarithm of the specified number.</returns>
 		[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
 		public static int ILog2 ( int number ) => BitOperations.TrailingZeroCount ( (nuint) number );
 

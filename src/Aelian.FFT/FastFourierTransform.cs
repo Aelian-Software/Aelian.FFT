@@ -357,10 +357,6 @@ namespace Aelian.FFT
 							Vec512ImagValues[VecIndexEven] = VecEvenImag + VecTImag;
 							Vec512RealValues[VecIndexOdd] = VecEvenReal - VecTReal;
 							Vec512ImagValues[VecIndexOdd] = VecEvenImag - VecTImag;
-
-#if DEBUG
-							DbgVectorOps512++;
-#endif
 							}
 						}
 					}
@@ -397,6 +393,10 @@ namespace Aelian.FFT
 		/// 
 		/// Note that a forward transform takes real-valued data (where 2 subsequent real values are described by a complex value's real and imaginary parts respectively) as input and outputs complex valued data,
 		/// whereas an inverse transform takes complex valued data as input and outputs real-valued data (where 2 subsequent real values are described by a complex value's real and imaginary parts respectively).
+		/// 
+		/// In case of a forward transform, the real and imaginary output values at index 0 will be the DC and Nyquist components respectively.
+		/// 
+		/// Note that a forward transform using this method only returns half of the symmetrical spectrum (the mirrored other half is identical)
 		/// </summary>
 		/// <param name="buffer">The real-valued source data. Will be overwritten by the output data. Length must be a power of 2 and at least 16.</param>
 		/// <param name="forward">Specifies whether to perform a forward or inverse transform.</param>
@@ -411,15 +411,19 @@ namespace Aelian.FFT
 		/// 
 		/// Note that a forward transform takes real-valued data as inputs and outputs complex valued data as interleaved real and imaginary values,
 		/// whereas an inverse transform takes complex valued data as interleaved real and imaginary values as inputs and outputs real-valued data.
+		/// 
+		/// In case of a forward transform, the real and imaginary output values at index 0 will be the DC and Nyquist components respectively.
+		/// 
+		/// Note that a forward transform using this method only returns half of the symmetrical spectrum (the mirrored other half is identical)
 		/// </summary>
-		/// <param name="buffer">The real-valued source data. Will be overwritten by the output data. Length must be a power of 2 and at least 16.</param>
+		/// <param name="complexRealValues">The real value parts of the complex numbers in case of an inverse transform, or even samples in case of a forward transform. Length must be a power of 2 and equal to the length of complexImagValues.</param>
+		/// <param name="complexImagValues">The imaginary value parts of the complex numbers in case of an inverse transform, or odd samples in case of a forward transform. Length must be a power of 2 and equal to the length of complexRealValues.</param>
 		/// <param name="forward">Specifies whether to perform a forward or inverse transform.</param>
-		/// <param name="flags">Specifies how to process the output data, default is None.</param>
+		/// <param name="normalizeFactor">Normalization factor, should be left at the default of 1.0 in most cases.</param>
 		/// <exception cref="NotSupportedException">Buffer length is shorter than 16.</exception>
-		public static void RealFFT ( Span<double> buffer, bool forward, FftFlags flags = FftFlags.None )
+		public static void RealFFT ( Span<double> complexRealValues, Span<double> complexImagValues, bool forward, double normalizeFactor = 1.0 )
 			{
-			var ComplexBuffer = MemoryMarshal.Cast<double, Complex> ( buffer );
-			var N = ComplexBuffer.Length;
+			var N = complexRealValues.Length;
 			var LogN = MathUtils.ILog2 ( N );
 			var HalfN = N >> 1;
 			var Sign = forward ? 1.0 : -1.0;
@@ -428,17 +432,14 @@ namespace Aelian.FFT
 			Debug.Assert ( LogN + 1 < Constants.MaxTableDepth, $"Constants.MaxTableDepth is too small to process DFT of size {N}. Should be at least {LogN + 2}" );
 
 			if ( N < 8 )
-				throw new NotSupportedException ( "buffer length must be at least 16" );
+				throw new NotSupportedException ( "buffer length must be at least 8" );
 
 			var RealRootsOfUnity = _RealRootsOfUnity;
 			var ImagRootsOfUnity = forward ? _ImagRootsOfUnity : _ImagInverseRootsOfUnity;
 			var IterRealRootsOfUnity = RealRootsOfUnity[LogN + 1].AsSpan ();
 			var IterImagRootsOfUnity = ImagRootsOfUnity[LogN + 1].AsSpan ();
-
-			ArrayZip.UnZipInPlacePow2 ( buffer ); // Unzip
-
-			var RealValues = buffer.Slice ( 0, N );
-			var ImagValues = buffer.Slice ( N, N );
+			var RealValues = complexRealValues;
+			var ImagValues = complexImagValues;
 
 			if ( forward )
 				FFT ( RealValues, ImagValues, true );
@@ -566,10 +567,36 @@ namespace Aelian.FFT
 				RealValues[0] = Half * ( Real0 + ImagValues[0] );
 				ImagValues[0] = Half * ( Real0 - ImagValues[0] );
 
-				var NormalizeFactor = flags.HasFlag ( FftFlags.DoNotNormalize ) ? ( N * 2.0 ) : 1.0; // TODO: This is wonky, we should be able to skip normalization alltogether. More research needed.
-
-				FFT ( RealValues, ImagValues, false, NormalizeFactor );
+				FFT ( RealValues, ImagValues, false, normalizeFactor );
 				}
+			}
+
+		/// <summary>
+		/// Compute the forward or inverse Fourier Transform of real-valued data.
+		/// The data is modified in place.
+		/// 
+		/// Note that a forward transform takes real-valued data as inputs and outputs complex valued data as interleaved real and imaginary values,
+		/// whereas an inverse transform takes complex valued data as interleaved real and imaginary values as inputs and outputs real-valued data.
+		/// 
+		/// In case of a forward transform, the output values at index 0 and 1 will be the DC and Nyquist components respectively.
+		/// 
+		/// Note that a forward transform using this method only returns half of the symmetrical spectrum (the mirrored other half is identical)
+		/// </summary>
+		/// <param name="buffer">The real-valued or interleaved complex-valued source data. Will be overwritten by the output data. Length must be a power of 2 and at least 16.</param>
+		/// <param name="forward">Specifies whether to perform a forward or inverse transform.</param>
+		/// <param name="flags">Specifies how to process the output data, default is None.</param>
+		/// <exception cref="NotSupportedException">Buffer length is shorter than 16.</exception>
+		public static void RealFFT ( Span<double> buffer, bool forward, FftFlags flags = FftFlags.None )
+			{
+			var N = buffer.Length >> 1;
+
+			ArrayZip.UnZipInPlacePow2 ( buffer ); // Unzip
+
+			var RealValues = buffer.Slice ( 0, N );
+			var ImagValues = buffer.Slice ( N, N );
+
+			var NormalizeFactor = flags.HasFlag ( FftFlags.DoNotNormalize ) ? ( N * 2.0 ) : 1.0; // TODO: This is wonky, we should be able to skip normalization alltogether. More research needed.
+			RealFFT ( RealValues, ImagValues, forward, NormalizeFactor );
 
 			if ( !flags.HasFlag ( FftFlags.DoNotRezip ) )
 				ArrayZip.ZipInPlacePow2 ( buffer ); // Re-zip
