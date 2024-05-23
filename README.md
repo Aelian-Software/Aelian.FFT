@@ -10,23 +10,46 @@ To my knowledge, it is the fastest .NET FFT implementation that is freely and pu
 
 ## Usage
 
+### Initialization
+
 ```c#
 using Aelian.FFT;
 
 // Call Initialize () once when your program is loading
 FastFourierTransform.Initialize ();
+```
 
-// Transform real-valued data:
+### Transforming complex-valued data
 
-var RealBuffer = new double[4096];
-// Fill RealBuffer with meaningful data here
-FastFourierTransform.RealFFT ( RealBuffer, /* forward: */ true );
-
-// Transform complex-valued data:
-
+```c#
 var ComplexBuffer = new System.Numerics.Complex[4096];
+
 // Fill ComplexBuffer with meaningful data here
+
 FastFourierTransform.FFT ( ComplexBuffer, /* forward: */ true );
+```
+
+### Transforming real-valued data
+
+```c#
+var RealBuffer = new double[4096];
+
+// Fill RealBuffer with meaningful data here
+
+FastFourierTransform.RealFFT ( RealBuffer, /* forward: */ true );
+```
+
+Or, alternatively, using the supplied `Aelian.FFT.SignalData` class to make working with in-place real-valued FFTs easier:
+
+```c#
+var MySignalData = SignalData.CreateFromRealSize ( 4096 );
+
+// Fill MySignalData with meaningful data here
+
+var RealValuedSamples = MySignalData.AsReal ();
+FastFourierTransform.RealFFT ( RealValuedSamples, /* forward: */ true );
+
+var ComplexSpectrum = MySignalData.AsComplex ();
 ```
 
 > **Note** that Aelian.FFT utilizes an _in-place_ algorithm, which means your input data is overwritten with output data. This saves costly memory allocation and memory access penalties, but might not always be the most convenient or intuitive approach. 
