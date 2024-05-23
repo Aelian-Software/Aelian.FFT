@@ -36,7 +36,7 @@ using System.Runtime.Intrinsics;
 
 namespace Aelian.FFT
 	{
-	public class FastFourierTransform
+	public static class FastFourierTransform
 		{
 		private static double[][] _RealRootsOfUnity;
 		private static double[][] _ImagRootsOfUnity;
