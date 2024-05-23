@@ -49,42 +49,51 @@ The following alternative implementations were used in this benchmark:
 - [NAudio](https://github.com/naudio/NAudio)
 - [MathNet.Numerics](https://github.com/mathnet/mathnet-numerics)
 - [FftSharp](https://github.com/swharden/FftSharp)
+- [NWaves](https://github.com/ar1st0crat/NWaves)
 
 ### Real-valued input
 
 Each benchmark represents running 10,000 transforms with an input of 4096 real values:
 
-|                   Method |    N |       Mean |    Error |   StdDev | Ratio | RatioSD |
-|------------------------- |----- |-----------:|---------:|---------:|------:|--------:|
-|           Aelian_RealFFT | 4096 |   130.8 ms |  2.05 ms |  1.82 ms |  1.00 |    0.00 |
-|   Aelian_RealFFT_Inverse | 4096 |   130.9 ms |  0.63 ms |  0.59 ms |  1.00 |    0.02 |
-|           Lomont_RealFFT | 4096 |   227.6 ms |  1.17 ms |  0.92 ms |  1.74 |    0.02 |
-|   Lomont_RealFFT_Inverse | 4096 |   275.0 ms |  2.19 ms |  1.94 ms |  2.10 |    0.03 |
-|           NAudio_RealFFT * | 4096 |   216.3 ms |  1.12 ms |  0.93 ms |  1.65 |    0.02 |
-|   NAudio_RealFFT_Inverse * | 4096 |   190.7 ms |  0.96 ms |  0.85 ms |  1.46 |    0.02 |
-|          MathNet_RealFFT | 4096 | 1,130.0 ms |  5.47 ms |  4.85 ms |  8.64 |    0.13 |
-|  MathNet_RealFFT_Inverse | 4096 |   908.5 ms |  4.51 ms |  4.22 ms |  6.95 |    0.10 |
-|         FftSharp_RealFFT | 4096 | 2,680.2 ms | 15.49 ms | 13.73 ms | 20.49 |    0.30 |
-| FftSharp_RealFFT_Inverse | 4096 | 2,978.1 ms | 55.46 ms | 98.58 ms | 23.49 |    0.62 |
+|                       Method |    N |        Mean |     Error |    StdDev | Ratio | RatioSD |
+|----------------------------- |----- |------------:|----------:|----------:|------:|--------:|
+|               Aelian_RealFFT | 4096 |   122.01 ms |  2.079 ms |  2.775 ms |  1.00 |    0.00 |
+|         Aelian_RealFFT_Split * | 4096 |    83.81 ms |  0.660 ms |  0.551 ms |  0.68 |    0.02 |
+|       Aelian_RealFFT_Inverse | 4096 |   127.80 ms |  1.394 ms |  1.164 ms |  1.04 |    0.03 |
+| Aelian_RealFFT_Inverse_Split * | 4096 |    86.83 ms |  0.973 ms |  0.910 ms |  0.71 |    0.02 |
+|         NWaves_RealFFT_Split | 4096 |   151.71 ms |  0.672 ms |  0.596 ms |  1.23 |    0.03 |
+| NWaves_RealFFT_Inverse_Split | 4096 |   159.52 ms |  0.842 ms |  0.703 ms |  1.29 |    0.03 |
+|               Lomont_RealFFT | 4096 |   247.15 ms |  4.765 ms |  4.224 ms |  2.01 |    0.06 |
+|       Lomont_RealFFT_Inverse | 4096 |   270.25 ms |  1.863 ms |  1.555 ms |  2.19 |    0.05 |
+|              MathNet_RealFFT | 4096 | 1,078.25 ms |  5.293 ms |  4.692 ms |  8.78 |    0.24 |
+|      MathNet_RealFFT_Inverse | 4096 |   905.07 ms |  5.071 ms |  4.235 ms |  7.34 |    0.19 |
+|             FftSharp_RealFFT | 4096 | 2,801.29 ms | 55.419 ms | 92.593 ms | 23.17 |    1.09 |
+|     FftSharp_RealFFT_Inverse | 4096 | 2,878.72 ms | 33.555 ms | 29.746 ms | 23.44 |    0.75 |
 
-> \* NAudio does not have a real-valued FFT, so we can only benchmark the complex FFT implementation. In addition to that, it only supports its own Complex value type using 32-bit floats, so it's kind of comparing apples and oranges.
+> **Note** that NAudio does not have a real-valued FFT, so it is omitted from this benchmark.
+
+> \* The split data overload of RealFFT is faster than the interleaved one, since it can skip unzipping and rezipping, but it is also less practical since it splits out the real-valued samples in even and odd arrays.
 
 ### Complex-valued input
 
 Each benchmark represents running 10,000 transforms with an input of 4096 complex values:
 
-|               Method |    N |       Mean |    Error |   StdDev | Ratio | RatioSD |
-|--------------------- |----- |-----------:|---------:|---------:|------:|--------:|
-|           Aelian_FFT | 4096 |   295.2 ms |  3.22 ms |  2.85 ms |  1.00 |    0.00 |
-|   Aelian_FFT_Inverse | 4096 |   305.4 ms |  1.93 ms |  1.71 ms |  1.03 |    0.01 |
-|           NAudio_FFT * | 4096 |   511.2 ms |  8.44 ms |  7.89 ms |  1.73 |    0.04 |
-|   NAudio_FFT_Inverse * | 4096 |   199.1 ms |  3.77 ms |  4.49 ms |  0.68 |    0.02 |
-|           Lomont_FFT | 4096 |   581.4 ms | 11.15 ms | 13.69 ms |  1.96 |    0.06 |
-|   Lomont_FFT_Inverse | 4096 |   647.8 ms | 12.49 ms | 15.80 ms |  2.21 |    0.07 |
-|          MathNet_FFT | 4096 |   799.0 ms |  8.86 ms |  7.86 ms |  2.71 |    0.04 |
-|  MathNet_FFT_Inverse | 4096 |   810.8 ms | 11.90 ms |  9.94 ms |  2.75 |    0.05 |
-|         FftSharp_FFT | 4096 | 2,774.1 ms | 30.18 ms | 26.76 ms |  9.40 |    0.12 |
-| FftSharp_FFT_Inverse | 4096 | 2,881.9 ms | 53.64 ms | 47.55 ms |  9.76 |    0.17 |
+|                   Method |    N |       Mean |    Error |   StdDev |     Median | Ratio | RatioSD |
+|------------------------- |----- |-----------:|---------:|---------:|-----------:|------:|--------:|
+|               Aelian_FFT | 4096 |   295.4 ms |  2.94 ms |  2.29 ms |   296.2 ms |  1.00 |    0.00 |
+|         Aelian_FFT_Split | 4096 |   184.2 ms |  0.83 ms |  0.77 ms |   184.1 ms |  0.62 |    0.01 |
+|       Aelian_FFT_Inverse | 4096 |   307.5 ms |  2.49 ms |  2.21 ms |   307.4 ms |  1.04 |    0.01 |
+| Aelian_FFT_Inverse_Split | 4096 |   192.4 ms |  1.19 ms |  1.05 ms |   192.1 ms |  0.65 |    0.00 |
+|           NWaves_FFT | 4096 |   560.8 ms | 11.08 ms | 26.77 ms |   568.3 ms |  1.90 |    0.10 |
+|   NWaves_FFT_Inverse | 4096 |   617.0 ms | 13.72 ms | 38.26 ms |   633.1 ms |  2.14 |    0.03 |
+|            NAudio_FFT_32 * | 4096 |   501.1 ms |  7.82 ms |  7.31 ms |   500.7 ms |  1.70 |    0.02 |
+|    NAudio_FFT_Inverse_32 * | 4096 |   194.5 ms |  1.71 ms |  1.52 ms |   194.7 ms |  0.66 |    0.01 |
+|               Lomont_FFT | 4096 |   584.0 ms |  7.60 ms |  6.34 ms |   583.7 ms |  1.97 |    0.02 |
+|       Lomont_FFT_Inverse | 4096 |   637.8 ms | 11.32 ms | 10.58 ms |   638.0 ms |  2.15 |    0.04 |
+|              MathNet_FFT | 4096 |   800.4 ms |  6.09 ms |  5.40 ms |   799.4 ms |  2.71 |    0.03 |
+|      MathNet_FFT_Inverse | 4096 |   806.9 ms |  5.29 ms |  4.69 ms |   806.2 ms |  2.73 |    0.03 |
+|             FftSharp_FFT | 4096 | 2,750.8 ms | 53.29 ms | 49.85 ms | 2,735.5 ms |  9.28 |    0.20 |
+|     FftSharp_FFT_Inverse | 4096 | 2,873.4 ms | 47.58 ms | 42.18 ms | 2,867.0 ms |  9.72 |    0.17 |
 
 > \* NAudio only supports its own Complex value type using 32-bit floats, so while it is faster in case of an inverse FFT, its output is also far less precise.
 
