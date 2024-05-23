@@ -10,7 +10,7 @@ namespace Tests
 
 		public FftTestFixture ()
 			{
-			var Rnd = new Random ();
+			var Rnd = new Random ( 20242024 );
 			ComplexInputData = new Complex[InputSize];
 			RealInputData = new double[InputSize * 2];
 
