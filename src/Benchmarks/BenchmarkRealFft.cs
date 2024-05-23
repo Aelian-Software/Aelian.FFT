@@ -11,7 +11,7 @@ namespace Benchmarks
 	public class BenchmarkRealFft
 		{
 		private const int RunCount = 10000;
-		private double[] RealInputData { get; set; }
+		private Aelian.FFT.SignalData RealInputData { get; set; }
 		
 		[Params ( 4096 )]
 		public int N;
@@ -20,22 +20,25 @@ namespace Benchmarks
 		public void Setup ()
 			{
 			var Rnd = new Random ();
-			RealInputData = new double[N];
+			RealInputData = Aelian.FFT.SignalData.CreateFromRealSize ( N );
+			var Mem = RealInputData.AsReal ();
 
 			for ( int i = 0; i < N; i++ )
-				RealInputData[i] = Rnd.NextDouble () * 2.0 - 1.0;
+				Mem[i] = Rnd.NextDouble () * 2.0 - 1.0;
 
 			Aelian.FFT.FastFourierTransform.Initialize ();
 			}
 
-		private unsafe void CopySourceData<T> ( T[] toBuffer )
+		private unsafe void CopySourceData<T> ( Span<T> destination )
 			where T : unmanaged
 			{
-			var ByteSize = RealInputData.Length * sizeof ( double );
-			var DestByteSize = toBuffer.Length * sizeof ( T );
+			var Source = RealInputData.AsReal ();
 
-			fixed ( T* pData = toBuffer )
-			fixed ( double* pSource = RealInputData )
+			var ByteSize = Source.Length * sizeof ( double );
+			var DestByteSize = destination.Length * sizeof ( T );
+
+			fixed ( T* pData = destination )
+			fixed ( double* pSource = Source )
 				{
 				Unsafe.CopyBlock ( pData, pSource, (uint) Math.Min ( ByteSize, DestByteSize ) );
 				}
@@ -48,26 +51,89 @@ namespace Benchmarks
 		[Benchmark ( Baseline = true )]
 		public void Aelian_RealFFT ()
 			{
-			var Buffer = new double[RealInputData.Length];
-
-			CopySourceData ( Buffer );
+			var Buffer = RealInputData.Clone ().AsReal ();
 
 			for ( int i = 0; i < RunCount; i++ )
 				Aelian.FFT.FastFourierTransform.RealFFT ( Buffer, true );
 			}
 
+		/// <summary>
+		/// The split data overload of RealFFT is faster than the interleaved one, since it can skip unzipping and rezipping,
+		/// but it is also less practical since it splits out the real-valued samples in even and odd arrays
+		/// </summary>
+		[Benchmark]
+		public void Aelian_RealFFT_Split ()
+			{
+			var BufferRe = new double[RealInputData.ComplexLength]; // Input: Even samples, output: spectrum real values
+			var BufferIm = new double[RealInputData.ComplexLength]; // Input: Odd samples, output: spectrum imaginary values
+
+			CopySourceData<double> ( BufferRe );
+			CopySourceData<double> ( BufferIm );
+
+			for ( int i = 0; i < RunCount; i++ )
+				Aelian.FFT.FastFourierTransform.RealFFT ( BufferRe, BufferIm, true );
+			}
+
 		[Benchmark]
 		public void Aelian_RealFFT_Inverse ()
 			{
-			var Buffer = new double[RealInputData.Length];
-
-			CopySourceData ( Buffer );
+			var Buffer = RealInputData.Clone ().AsReal ();
 
 			for ( int i = 0; i < RunCount; i++ )
 				Aelian.FFT.FastFourierTransform.RealFFT ( Buffer, false );
 			}
 
+		/// <summary>
+		/// The split data overload of RealFFT is faster than the interleaved one, since it can skip unzipping and rezipping,
+		/// but it is also less practical since it splits out the real-valued samples in even and odd arrays
+		/// </summary>
+		[Benchmark]
+		public void Aelian_RealFFT_Inverse_Split ()
+			{
+			var BufferRe = new double[RealInputData.ComplexLength]; // Input: spectrum real values, output: Even samples
+			var BufferIm = new double[RealInputData.ComplexLength]; // Input: spectrum imaginary values, output: Odd samples
+
+			CopySourceData<double> ( BufferRe );
+			CopySourceData<double> ( BufferIm );
+
+			for ( int i = 0; i < RunCount; i++ )
+				Aelian.FFT.FastFourierTransform.RealFFT ( BufferRe, BufferIm, false );
+			}
+
 #if BENCHMARK_OTHERS
+
+		/*--------------------------------------------------------------\
+		| NWaves                                                        |
+		\* ------------------------------------------------------------*/
+
+		[Benchmark]
+		public void NWaves_RealFFT_Split ()
+			{
+			var Buffer = new double[RealInputData.RealLength];
+			var OutRe = new double[RealInputData.ComplexLength];
+			var OutIm = new double[RealInputData.ComplexLength];
+			var NWaves = new NWaves.Transforms.RealFft64 ( RealInputData.ComplexLength );
+
+			CopySourceData<double> ( Buffer );
+
+			for ( int i = 0; i < RunCount; i++ )
+				NWaves.DirectNorm ( Buffer, null, OutRe, OutIm );
+			}
+
+		[Benchmark]
+		public void NWaves_RealFFT_Inverse_Split ()
+			{
+			var BufferRe = new double[RealInputData.ComplexLength];
+			var BufferIm = new double[RealInputData.ComplexLength];
+			var Out = new double[RealInputData.RealLength];
+			var NWaves = new NWaves.Transforms.RealFft64 ( RealInputData.ComplexLength );
+
+			CopySourceData<double> ( BufferRe );
+			CopySourceData<double> ( BufferIm );
+
+			for ( int i = 0; i < RunCount; i++ )
+				NWaves.InverseNorm ( BufferRe, BufferIm, Out );
+			}
 
 		/*--------------------------------------------------------------\
 		| Math.NET                                                      |
@@ -76,10 +142,10 @@ namespace Benchmarks
 		[Benchmark]
 		public void MathNet_RealFFT ()
 			{
-			var N = RealInputData.Length;
+			var N = RealInputData.RealLength;
 			var Buffer = new double[N + 2]; // MathNet.Numerics.IntegralTransforms.Fourier.ForwardReal demands that buffer size be N+2
 
-			CopySourceData ( Buffer );
+			CopySourceData<double> ( Buffer );
 
 			for ( int i = 0; i < RunCount; i++ )
 				MathNet.Numerics.IntegralTransforms.Fourier.ForwardReal ( Buffer, N );
@@ -88,10 +154,10 @@ namespace Benchmarks
 		[Benchmark]
 		public void MathNet_RealFFT_Inverse ()
 			{
-			var N = RealInputData.Length;
+			var N = RealInputData.RealLength;
 			var Buffer = new double[N + 2]; // MathNet.Numerics.IntegralTransforms.Fourier.InverseReal demands that buffer size be N+2
 
-			CopySourceData ( Buffer );
+			CopySourceData<double> ( Buffer );
 
 			for ( int i = 0; i < RunCount; i++ )
 				MathNet.Numerics.IntegralTransforms.Fourier.InverseReal ( Buffer, N );
@@ -105,9 +171,7 @@ namespace Benchmarks
 		public void Lomont_RealFFT ()
 			{
 			var Lomont = new Lomont.LomontFFT () { A = 1, B = -1 };
-			var Buffer = new double[RealInputData.Length];
-
-			CopySourceData ( Buffer );
+			var Buffer = RealInputData.ToRealArray ();
 
 			for ( int i = 0; i < RunCount; i++ )
 				Lomont.RealFFT ( Buffer, true );
@@ -117,44 +181,10 @@ namespace Benchmarks
 		public void Lomont_RealFFT_Inverse ()
 			{
 			var Lomont = new Lomont.LomontFFT () { A = 1, B = -1 };
-			var Buffer = new double[RealInputData.Length];
-
-			CopySourceData ( Buffer );
+			var Buffer = RealInputData.ToRealArray ();
 
 			for ( int i = 0; i < RunCount; i++ )
 				Lomont.RealFFT ( Buffer, false );
-			}
-
-		/*--------------------------------------------------------------\
-		| NAudio                                                        |
-		| NOTE: NAudio does not have a real-valued FFT, so we can only  |
-		| benchmark the complex FFT implementation.                     |
-		| Also, it only supports its own Complex value type using       |
-		| floats, so it's kind of comparing apples and oranges          |
-		\* ------------------------------------------------------------*/
-
-		[Benchmark]
-		public void NAudio_RealFFT ()
-			{
-			var Buffer = new NAudio.Dsp.Complex[RealInputData.Length / 2];
-			var M = Aelian.FFT.MathUtils.ILog2 ( Buffer.Length );
-
-			CopySourceData ( Buffer );
-
-			for ( int i = 0; i < RunCount; i++ )
-				NAudio.Dsp.FastFourierTransform.FFT ( true, M, Buffer );
-			}
-
-		[Benchmark]
-		public void NAudio_RealFFT_Inverse ()
-			{
-			var Buffer = new NAudio.Dsp.Complex[RealInputData.Length / 2];
-			var M = Aelian.FFT.MathUtils.ILog2 ( Buffer.Length );
-
-			CopySourceData ( Buffer );
-
-			for ( int i = 0; i < RunCount; i++ )
-				NAudio.Dsp.FastFourierTransform.FFT ( false, M, Buffer );
 			}
 
 		/*--------------------------------------------------------------\
@@ -164,9 +194,7 @@ namespace Benchmarks
 		[Benchmark]
 		public void FftSharp_RealFFT ()
 			{
-			var Buffer = new double[RealInputData.Length];
-
-			CopySourceData ( Buffer );
+			var Buffer = RealInputData.ToRealArray ();
 
 			for ( int i = 0; i < RunCount; i++ )
 				FftSharp.FFT.ForwardReal ( Buffer );
@@ -175,9 +203,9 @@ namespace Benchmarks
 		[Benchmark]
 		public void FftSharp_RealFFT_Inverse ()
 			{
-			var Buffer = new Complex[RealInputData.Length / 2 + 1]; // FftSharp.FFT.InverseReal demands spectrum size be a power of 2 + 1
+			var Buffer = new Complex[RealInputData.ComplexLength + 1]; // FftSharp.FFT.InverseReal demands spectrum size be a power of 2 + 1
 
-			CopySourceData ( Buffer );
+			CopySourceData<Complex> ( Buffer );
 
 			for ( int i = 0; i < RunCount; i++ )
 				FftSharp.FFT.InverseReal ( Buffer );

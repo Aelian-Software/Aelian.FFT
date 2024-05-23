@@ -6,7 +6,7 @@ namespace Benchmarks
 		{
 		static void Main ( string[] args )
 			{
-			//var SummaryReal = BenchmarkRunner.Run<BenchmarkRealFft> ();
+			var SummaryReal = BenchmarkRunner.Run<BenchmarkRealFft> ();
 			var SummaryComplex = BenchmarkRunner.Run<BenchmarkComplexFft> ();
 			}
 		}

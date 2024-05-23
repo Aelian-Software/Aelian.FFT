@@ -12,7 +12,9 @@ namespace Benchmarks
 		{
 		private const int RunCount = 10000;
 		private Complex[] ComplexInputData { get; set; }
-		
+		private double[] ComplexInputDataReal { get; set; }
+		private double[] ComplexInputDataImag { get; set; }
+
 		[Params ( 4096 )]
 		public int N;
 
@@ -21,9 +23,15 @@ namespace Benchmarks
 			{
 			var Rnd = new Random ();
 			ComplexInputData = new Complex[N];
+			ComplexInputDataReal = new double[N];
+			ComplexInputDataImag = new double[N];
 
 			for ( int i = 0; i < N; i++ )
+				{
 				ComplexInputData[i] = new Complex ( Rnd.NextDouble () * 2.0 - 1.0, Rnd.NextDouble () * 2.0 - 1.0 );
+				ComplexInputDataReal[i] = ComplexInputData[i].Real;
+				ComplexInputDataImag[i] = ComplexInputData[i].Imaginary;
+				}				
 
 			Aelian.FFT.FastFourierTransform.Initialize ();
 			}
@@ -66,6 +74,16 @@ namespace Benchmarks
 			}
 
 		[Benchmark]
+		public void Aelian_FFT_Split ()
+			{
+			var BufferRe = (double[]) ComplexInputDataReal.Clone ();
+			var BufferIm = (double[]) ComplexInputDataImag.Clone ();
+
+			for ( int i = 0; i < RunCount; i++ )
+				Aelian.FFT.FastFourierTransform.FFT ( BufferRe, BufferIm, true );
+			}
+
+		[Benchmark]
 		public void Aelian_FFT_Inverse ()
 			{
 			var Buffer = new Complex[ComplexInputData.Length];
@@ -76,7 +94,49 @@ namespace Benchmarks
 				Aelian.FFT.FastFourierTransform.FFT ( Buffer, false );
 			}
 
+		[Benchmark]
+		public void Aelian_FFT_Inverse_Split ()
+			{
+			var BufferRe = (double[]) ComplexInputDataReal.Clone ();
+			var BufferIm = (double[]) ComplexInputDataImag.Clone ();
+
+			for ( int i = 0; i < RunCount; i++ )
+				Aelian.FFT.FastFourierTransform.FFT ( BufferRe, BufferIm, false );
+			}
+
 #if BENCHMARK_OTHERS
+
+		/*--------------------------------------------------------------\
+		| NWaves                                                        |
+		\* ------------------------------------------------------------*/
+
+		[Benchmark]
+		public void NWaves_FFT ()
+			{
+			var NWaves = new NWaves.Transforms.Fft64 ( ComplexInputData.Length );
+
+			var BufferRe = (double[]) ComplexInputDataReal.Clone ();
+			var BufferIm = (double[]) ComplexInputDataImag.Clone ();
+			var OutRe = new double[ComplexInputData.Length];
+			var OutIm = new double[ComplexInputData.Length];
+
+			for ( int i = 0; i < RunCount; i++ )
+				NWaves.DirectNorm ( BufferRe, BufferIm, OutRe, OutIm );
+			}
+
+		[Benchmark]
+		public void NWaves_FFT_Inverse ()
+			{
+			var NWaves = new NWaves.Transforms.Fft64 ( ComplexInputData.Length );
+
+			var BufferRe = (double[]) ComplexInputDataReal.Clone ();
+			var BufferIm = (double[]) ComplexInputDataImag.Clone ();
+			var OutRe = new double[ComplexInputData.Length];
+			var OutIm = new double[ComplexInputData.Length];
+
+			for ( int i = 0; i < RunCount; i++ )
+				NWaves.InverseNorm ( BufferRe, BufferIm, OutRe, OutIm );
+			}
 
 		/*--------------------------------------------------------------\
 		| Math.NET                                                      |
@@ -135,11 +195,11 @@ namespace Benchmarks
 		/*--------------------------------------------------------------\
 		| NAudio                                                        |
 		| NOTE: NAudio only supports its own Complex value type using   |
-		| 32-bit floats, so it's kind of comparing apples and oranges   |
+		| 32-bit floats, resulting in reduced precision                 |
 		\* ------------------------------------------------------------*/
 
 		[Benchmark]
-		public void NAudio_FFT ()
+		public void NAudio_FFT_32 ()
 			{
 			var Buffer = new NAudio.Dsp.Complex[ComplexInputData.Length];
 			var M = Aelian.FFT.MathUtils.ILog2 ( Buffer.Length );
@@ -151,7 +211,7 @@ namespace Benchmarks
 			}
 
 		[Benchmark]
-		public void NAudio_FFT_Inverse ()
+		public void NAudio_FFT_Inverse_32 ()
 			{
 			var Buffer = new NAudio.Dsp.Complex[ComplexInputData.Length / 2];
 			var M = Aelian.FFT.MathUtils.ILog2 ( Buffer.Length );
