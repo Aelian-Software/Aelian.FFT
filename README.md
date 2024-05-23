@@ -10,23 +10,46 @@ To my knowledge, it is the fastest .NET FFT implementation that is freely and pu
 
 ## Usage
 
+### Initialization
+
 ```c#
 using Aelian.FFT;
 
 // Call Initialize () once when your program is loading
 FastFourierTransform.Initialize ();
+```
 
-// Transform real-valued data:
+### Transforming complex-valued data
 
-var RealBuffer = new double[4096];
-// Fill RealBuffer with meaningful data here
-FastFourierTransform.RealFFT ( RealBuffer, /* forward: */ true );
-
-// Transform complex-valued data:
-
+```c#
 var ComplexBuffer = new System.Numerics.Complex[4096];
+
 // Fill ComplexBuffer with meaningful data here
+
 FastFourierTransform.FFT ( ComplexBuffer, /* forward: */ true );
+```
+
+### Transforming real-valued data
+
+```c#
+var RealBuffer = new double[4096];
+
+// Fill RealBuffer with meaningful data here
+
+FastFourierTransform.RealFFT ( RealBuffer, /* forward: */ true );
+```
+
+Or, alternatively, using the supplied `Aelian.FFT.SignalData` class to make working with in-place real-valued FFTs easier:
+
+```c#
+var MySignalData = SignalData.CreateFromRealSize ( 4096 );
+
+// Fill MySignalData with meaningful data here
+
+var RealValuedSamples = MySignalData.AsReal ();
+FastFourierTransform.RealFFT ( RealValuedSamples, /* forward: */ true );
+
+var ComplexSpectrum = MySignalData.AsComplex ();
 ```
 
 > **Note** that Aelian.FFT utilizes an _in-place_ algorithm, which means your input data is overwritten with output data. This saves costly memory allocation and memory access penalties, but might not always be the most convenient or intuitive approach. 
@@ -49,42 +72,51 @@ The following alternative implementations were used in this benchmark:
 - [NAudio](https://github.com/naudio/NAudio)
 - [MathNet.Numerics](https://github.com/mathnet/mathnet-numerics)
 - [FftSharp](https://github.com/swharden/FftSharp)
+- [NWaves](https://github.com/ar1st0crat/NWaves)
 
 ### Real-valued input
 
 Each benchmark represents running 10,000 transforms with an input of 4096 real values:
 
-|                   Method |    N |       Mean |    Error |   StdDev | Ratio | RatioSD |
-|------------------------- |----- |-----------:|---------:|---------:|------:|--------:|
-|           Aelian_RealFFT | 4096 |   155.3 ms |  1.26 ms |  1.12 ms |  1.00 |    0.00 |
-|   Aelian_RealFFT_Inverse | 4096 |   161.6 ms |  1.67 ms |  1.48 ms |  1.04 |    0.01 |
-|           Lomont_RealFFT | 4096 |   226.8 ms |  0.92 ms |  0.82 ms |  1.46 |    0.01 |
-|   Lomont_RealFFT_Inverse | 4096 |   273.3 ms |  1.79 ms |  1.59 ms |  1.76 |    0.02 |
-|           NAudio_RealFFT * | 4096 |   218.8 ms |  4.28 ms |  4.58 ms |  1.42 |    0.03 |
-|   NAudio_RealFFT_Inverse * | 4096 |   190.4 ms |  1.26 ms |  1.05 ms |  1.23 |    0.01 |
-|          MathNet_RealFFT | 4096 | 1,130.3 ms |  6.78 ms |  5.66 ms |  7.28 |    0.06 |
-|  MathNet_RealFFT_Inverse | 4096 |   899.2 ms |  2.57 ms |  2.40 ms |  5.79 |    0.05 |
-|         FftSharp_RealFFT | 4096 | 2,684.7 ms | 40.48 ms | 35.89 ms | 17.29 |    0.22 |
-| FftSharp_RealFFT_Inverse | 4096 | 2,858.4 ms | 42.35 ms | 47.07 ms | 18.38 |    0.38 |
+|                       Method |    N |        Mean |     Error |    StdDev | Ratio | RatioSD |
+|----------------------------- |----- |------------:|----------:|----------:|------:|--------:|
+|               Aelian_RealFFT | 4096 |   122.01 ms |  2.079 ms |  2.775 ms |  1.00 |    0.00 |
+|         Aelian_RealFFT_Split * | 4096 |    83.81 ms |  0.660 ms |  0.551 ms |  0.68 |    0.02 |
+|       Aelian_RealFFT_Inverse | 4096 |   127.80 ms |  1.394 ms |  1.164 ms |  1.04 |    0.03 |
+| Aelian_RealFFT_Inverse_Split * | 4096 |    86.83 ms |  0.973 ms |  0.910 ms |  0.71 |    0.02 |
+|         NWaves_RealFFT_Split | 4096 |   151.71 ms |  0.672 ms |  0.596 ms |  1.23 |    0.03 |
+| NWaves_RealFFT_Inverse_Split | 4096 |   159.52 ms |  0.842 ms |  0.703 ms |  1.29 |    0.03 |
+|               Lomont_RealFFT | 4096 |   247.15 ms |  4.765 ms |  4.224 ms |  2.01 |    0.06 |
+|       Lomont_RealFFT_Inverse | 4096 |   270.25 ms |  1.863 ms |  1.555 ms |  2.19 |    0.05 |
+|              MathNet_RealFFT | 4096 | 1,078.25 ms |  5.293 ms |  4.692 ms |  8.78 |    0.24 |
+|      MathNet_RealFFT_Inverse | 4096 |   905.07 ms |  5.071 ms |  4.235 ms |  7.34 |    0.19 |
+|             FftSharp_RealFFT | 4096 | 2,801.29 ms | 55.419 ms | 92.593 ms | 23.17 |    1.09 |
+|     FftSharp_RealFFT_Inverse | 4096 | 2,878.72 ms | 33.555 ms | 29.746 ms | 23.44 |    0.75 |
 
-> \* NAudio does not have a real-valued FFT, so we can only benchmark the complex FFT implementation. In addition to that, it only supports its own Complex value type using 32-bit floats, so it's kind of comparing apples and oranges.
+> **Note** that NAudio does not have a real-valued FFT, so it is omitted from this benchmark.
+
+> \* The split data overload of RealFFT is faster than the interleaved one, since it can skip unzipping and rezipping, but it is also less practical since it splits out the real-valued samples in even and odd arrays.
 
 ### Complex-valued input
 
 Each benchmark represents running 10,000 transforms with an input of 4096 complex values:
 
-|               Method |    N |       Mean |    Error |   StdDev |     Median | Ratio | RatioSD |
-|--------------------- |----- |-----------:|---------:|---------:|-----------:|------:|--------:|
-|           Aelian_FFT | 4096 |   341.3 ms |  3.49 ms |  2.91 ms |   340.8 ms |  1.00 |    0.00 |
-|   Aelian_FFT_Inverse | 4096 |   370.9 ms |  6.93 ms | 13.99 ms |   364.5 ms |  1.12 |    0.04 |
-|           NAudio_FFT * | 4096 |   499.8 ms |  9.55 ms | 18.16 ms |   489.7 ms |  1.53 |    0.05 |
-|   NAudio_FFT_Inverse * | 4096 |   190.8 ms |  1.04 ms |  0.93 ms |   190.7 ms |  0.56 |    0.00 |
-|           Lomont_FFT | 4096 |   580.7 ms | 11.56 ms | 12.36 ms |   582.6 ms |  1.69 |    0.03 |
-|   Lomont_FFT_Inverse | 4096 |   629.5 ms | 12.36 ms | 16.50 ms |   623.6 ms |  1.88 |    0.05 |
-|          MathNet_FFT | 4096 |   803.2 ms |  8.48 ms |  7.93 ms |   803.7 ms |  2.35 |    0.02 |
-|  MathNet_FFT_Inverse | 4096 |   796.4 ms |  5.13 ms |  4.79 ms |   796.1 ms |  2.33 |    0.02 |
-|         FftSharp_FFT | 4096 | 2,657.6 ms | 23.92 ms | 22.38 ms | 2,651.7 ms |  7.79 |    0.11 |
-| FftSharp_FFT_Inverse | 4096 | 2,833.6 ms | 26.66 ms | 23.63 ms | 2,831.3 ms |  8.30 |    0.11 |
+|                   Method |    N |       Mean |    Error |   StdDev |     Median | Ratio | RatioSD |
+|------------------------- |----- |-----------:|---------:|---------:|-----------:|------:|--------:|
+|               Aelian_FFT | 4096 |   295.4 ms |  2.94 ms |  2.29 ms |   296.2 ms |  1.00 |    0.00 |
+|         Aelian_FFT_Split | 4096 |   184.2 ms |  0.83 ms |  0.77 ms |   184.1 ms |  0.62 |    0.01 |
+|       Aelian_FFT_Inverse | 4096 |   307.5 ms |  2.49 ms |  2.21 ms |   307.4 ms |  1.04 |    0.01 |
+| Aelian_FFT_Inverse_Split | 4096 |   192.4 ms |  1.19 ms |  1.05 ms |   192.1 ms |  0.65 |    0.00 |
+|           NWaves_FFT | 4096 |   560.8 ms | 11.08 ms | 26.77 ms |   568.3 ms |  1.90 |    0.10 |
+|   NWaves_FFT_Inverse | 4096 |   617.0 ms | 13.72 ms | 38.26 ms |   633.1 ms |  2.14 |    0.03 |
+|            NAudio_FFT_32 * | 4096 |   501.1 ms |  7.82 ms |  7.31 ms |   500.7 ms |  1.70 |    0.02 |
+|    NAudio_FFT_Inverse_32 * | 4096 |   194.5 ms |  1.71 ms |  1.52 ms |   194.7 ms |  0.66 |    0.01 |
+|               Lomont_FFT | 4096 |   584.0 ms |  7.60 ms |  6.34 ms |   583.7 ms |  1.97 |    0.02 |
+|       Lomont_FFT_Inverse | 4096 |   637.8 ms | 11.32 ms | 10.58 ms |   638.0 ms |  2.15 |    0.04 |
+|              MathNet_FFT | 4096 |   800.4 ms |  6.09 ms |  5.40 ms |   799.4 ms |  2.71 |    0.03 |
+|      MathNet_FFT_Inverse | 4096 |   806.9 ms |  5.29 ms |  4.69 ms |   806.2 ms |  2.73 |    0.03 |
+|             FftSharp_FFT | 4096 | 2,750.8 ms | 53.29 ms | 49.85 ms | 2,735.5 ms |  9.28 |    0.20 |
+|     FftSharp_FFT_Inverse | 4096 | 2,873.4 ms | 47.58 ms | 42.18 ms | 2,867.0 ms |  9.72 |    0.17 |
 
 > \* NAudio only supports its own Complex value type using 32-bit floats, so while it is faster in case of an inverse FFT, its output is also far less precise.
 
