@@ -80,10 +80,10 @@ Each benchmark represents running 10,000 transforms with an input of 4096 real v
 
 |                       Method |    N |        Mean |     Error |    StdDev | Ratio | RatioSD |
 |----------------------------- |----- |------------:|----------:|----------:|------:|--------:|
-|               Aelian_RealFFT | 4096 |   122.01 ms |  2.079 ms |  2.775 ms |  1.00 |    0.00 |
-|         Aelian_RealFFT_Split * | 4096 |    83.81 ms |  0.660 ms |  0.551 ms |  0.68 |    0.02 |
-|       Aelian_RealFFT_Inverse | 4096 |   127.80 ms |  1.394 ms |  1.164 ms |  1.04 |    0.03 |
-| Aelian_RealFFT_Inverse_Split * | 4096 |    86.83 ms |  0.973 ms |  0.910 ms |  0.71 |    0.02 |
+|               **Aelian_RealFFT** | 4096 |   **122.01 ms** |  2.079 ms |  2.775 ms |  1.00 |    0.00 |
+|         **Aelian_RealFFT_Split** * | 4096 |    **83.81 ms** |  0.660 ms |  0.551 ms |  0.68 |    0.02 |
+|       **Aelian_RealFFT_Inverse** | 4096 |   **127.80 ms** |  1.394 ms |  1.164 ms |  1.04 |    0.03 |
+| **Aelian_RealFFT_Inverse_Split** * | 4096 |    **86.83 ms** |  0.973 ms |  0.910 ms |  0.71 |    0.02 |
 |         NWaves_RealFFT_Split | 4096 |   151.71 ms |  0.672 ms |  0.596 ms |  1.23 |    0.03 |
 | NWaves_RealFFT_Inverse_Split | 4096 |   159.52 ms |  0.842 ms |  0.703 ms |  1.29 |    0.03 |
 |               Lomont_RealFFT | 4096 |   247.15 ms |  4.765 ms |  4.224 ms |  2.01 |    0.06 |
@@ -103,10 +103,10 @@ Each benchmark represents running 10,000 transforms with an input of 4096 comple
 
 |                   Method |    N |       Mean |    Error |   StdDev |     Median | Ratio | RatioSD |
 |------------------------- |----- |-----------:|---------:|---------:|-----------:|------:|--------:|
-|               Aelian_FFT | 4096 |   295.4 ms |  2.94 ms |  2.29 ms |   296.2 ms |  1.00 |    0.00 |
-|         Aelian_FFT_Split | 4096 |   184.2 ms |  0.83 ms |  0.77 ms |   184.1 ms |  0.62 |    0.01 |
-|       Aelian_FFT_Inverse | 4096 |   307.5 ms |  2.49 ms |  2.21 ms |   307.4 ms |  1.04 |    0.01 |
-| Aelian_FFT_Inverse_Split | 4096 |   192.4 ms |  1.19 ms |  1.05 ms |   192.1 ms |  0.65 |    0.00 |
+|               **Aelian_FFT** | 4096 |   **295.4 ms** |  2.94 ms |  2.29 ms |   296.2 ms |  1.00 |    0.00 |
+|         **Aelian_FFT_Split** | 4096 |   **184.2 ms** |  0.83 ms |  0.77 ms |   184.1 ms |  0.62 |    0.01 |
+|       **Aelian_FFT_Inverse** | 4096 |   **307.5 ms** |  2.49 ms |  2.21 ms |   307.4 ms |  1.04 |    0.01 |
+| **Aelian_FFT_Inverse_Split** | 4096 |   **192.4 ms** |  1.19 ms |  1.05 ms |   192.1 ms |  0.65 |    0.00 |
 |           NWaves_FFT | 4096 |   560.8 ms | 11.08 ms | 26.77 ms |   568.3 ms |  1.90 |    0.10 |
 |   NWaves_FFT_Inverse | 4096 |   617.0 ms | 13.72 ms | 38.26 ms |   633.1 ms |  2.14 |    0.03 |
 |            NAudio_FFT_32 * | 4096 |   501.1 ms |  7.82 ms |  7.31 ms |   500.7 ms |  1.70 |    0.02 |
