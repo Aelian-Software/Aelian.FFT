@@ -30,7 +30,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 
 namespace Aelian.FFT
 	{
@@ -49,6 +51,8 @@ namespace Aelian.FFT
 				IndexA = indexA;
 				IndexB = indexB;
 				}
+
+			public override string ToString () => $"{IndexA} <-> {IndexB}";
 			}
 
 		private static int ReverseBitOrder ( int input, int bitCount )
@@ -62,6 +66,19 @@ namespace Aelian.FFT
 					Output |= 1 << ( BitIndex - 1 );
 
 				BitIndex--;
+				}
+
+			return Output;
+			}
+
+		private static int FastReverseBitOrder ( int input, int bitCount )
+			{
+			int Output = 0;
+			
+			for ( int i = 0; i < bitCount; i++ )
+				{
+				Output = ( Output << 1 ) | ( input & 1 );
+				input >>= 1;
 				}
 
 			return Output;
@@ -100,7 +117,7 @@ namespace Aelian.FFT
 			}
 
 		/// <summary>
-		/// Shuffles the selements of two arrays so that each element ends up at the index that is the bit-reverse of its original index
+		/// Shuffles the elements of two arrays so that each element ends up at the index that is the bit-reverse of its original index
 		/// </summary>
 		/// <typeparam name="T">The array type</typeparam>
 		/// <param name="arrayA">The first array</param>
@@ -120,6 +137,33 @@ namespace Aelian.FFT
 				var TmpB = arrayB[Swap.IndexA];
 				arrayB[Swap.IndexA] = arrayB[Swap.IndexB];
 				arrayB[Swap.IndexB] = TmpB;
+				}
+			}
+
+		/// <summary>
+		/// Shuffles the elements of two arrays so that each element ends up at the index that is the bit-reverse of its original index
+		/// </summary>
+		/// <typeparam name="T">The array type</typeparam>
+		/// <param name="arrayA">The first array</param>
+		/// <param name="arrayB">The second array</param>
+		/// <param name="logArraySize">The binary logarithm of the size of the arrays</param>
+		[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
+		public static void BitReverseArrayInPlaceNoLUT<T> ( Span<T> arrayA, Span<T> arrayB, int logArraySize )
+			{
+			for ( int i = 0; i < arrayA.Length; i++ )
+				{
+				var Inverse = FastReverseBitOrder ( i, logArraySize );
+
+				if ( Inverse <= i )
+					continue;
+
+				var TmpA = arrayA[i];
+				arrayA[i] = arrayA[Inverse];
+				arrayA[Inverse] = TmpA;
+
+				var TmpB = arrayB[i];
+				arrayB[i] = arrayB[Inverse];
+				arrayB[Inverse] = TmpB;
 				}
 			}
 		}
