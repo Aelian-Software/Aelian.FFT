@@ -1,6 +1,8 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
 
+using Aelian.FFT;
+
 using Xunit.Abstractions;
 
 namespace Tests
@@ -25,13 +27,13 @@ namespace Tests
 			// Aelian forward FFT
 
 			var AelianBuffer = (Complex[]) ComplexValues.Clone ();
-			Aelian.FFT.FastFourierTransform.FFT ( AelianBuffer, true );
+			FastFourierTransform.FFT ( AelianBuffer, true );
 
 			// Lomont forward FFT
 
 			var Lomont = new Lomont.LomontFFT () { A = 1, B = -1 };
 			var LomontBuffer = (Complex[]) ComplexValues.Clone ();
-			var InterleavedLomontBuffer = MemoryMarshal.Cast<Complex, double> ( LomontBuffer );
+			var InterleavedLomontBuffer = MemoryMarshal.Cast<Complex, double> ( LomontBuffer.AsSpan () );
 			Lomont.FFT ( InterleavedLomontBuffer, true );
 
 			// Verify that forward transform yielded equal (or close enough) values
@@ -40,7 +42,7 @@ namespace Tests
 
 			// Inverse FFT
 
-			Aelian.FFT.FastFourierTransform.FFT ( AelianBuffer, false );
+			FastFourierTransform.FFT ( AelianBuffer, false );
 			Lomont.FFT ( InterleavedLomontBuffer, false );
 
 			// Verify that inverse transform yielded equal (or close enough) values
@@ -56,7 +58,7 @@ namespace Tests
 			// Aelian forward FFT
 
 			var AelianBuffer = (double[]) RealValues.Clone ();
-			Aelian.FFT.FastFourierTransform.RealFFT ( AelianBuffer, true );
+			FastFourierTransform.RealFFT ( AelianBuffer, true );
 
 			// Lomont forward FFT
 
@@ -70,7 +72,7 @@ namespace Tests
 
 			// Inverse FFT
 
-			Aelian.FFT.FastFourierTransform.RealFFT ( AelianBuffer, false );
+			FastFourierTransform.RealFFT ( AelianBuffer, false );
 			Lomont.RealFFT ( LomontBuffer, false );
 
 			// Verify that inverse transform yielded equal (or close enough) values
