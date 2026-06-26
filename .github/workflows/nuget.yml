@@ -1,4 +1,4 @@
-name: Publish to NuGet
+name: Publish release
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - "v*"
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 jobs:
@@ -17,6 +17,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME}"
+
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Tag '$tag' is not a valid version tag such as v1.2.3"
+            exit 1
+          fi
+
+          echo "number=${tag#v}" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
@@ -33,6 +47,7 @@ jobs:
           src/Aelian.FFT/Aelian.FFT.csproj
           --configuration Release
           --no-restore
+          -p:Version=${{ steps.version.outputs.number }}
 
       - name: Pack
         run: >
@@ -41,8 +56,8 @@ jobs:
           --configuration Release
           --no-build
           --output artifacts
+          -p:Version=${{ steps.version.outputs.number }}
 
-        # Get a short-lived NuGet API key
       - name: NuGet login
         id: login
         uses: NuGet/login@v1
@@ -55,3 +70,13 @@ jobs:
           --api-key "${{ steps.login.outputs.NUGET_API_KEY }}"
           --source "https://api.nuget.org/v3/index.json"
           --skip-duplicate
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "${{ steps.version.outputs.tag }}"
+          artifacts/*.nupkg
+          --verify-tag
+          --generate-notes
+          --title "${{ steps.version.outputs.tag }}"

@@ -2,12 +2,11 @@
 
 	<PropertyGroup>
 		<TargetFramework>net10.0</TargetFramework>
-		<Version>1.1.0</Version>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<Authors>Bas Tossings</Authors>
 		<Company>Aelian</Company>
 		<Description>A highly optimized fast fourier transform implementation for .NET 10 and up, written in 100% pure c#</Description>
-		<Copyright>(c) 2026 Bas Tossings, Aelian</Copyright>
+		<Copyright>© 2024–$([System.DateTime]::UtcNow.ToString('yyyy')) Bas Tossings, Aelian</Copyright>
 		<RepositoryUrl>https://github.com/Aelian-Software/Aelian.FFT</RepositoryUrl>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageLicenseFile>LICENSE</PackageLicenseFile>
