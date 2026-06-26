@@ -131,16 +131,17 @@ namespace Aelian.FFT
 				throw new ArgumentException ( "Buffer size must be a power of 2", nameof ( buffer ) );
 
 			var UnZippedBuffer = MemoryMarshal.Cast<Complex, double> ( buffer );
-			var RealValues = UnZippedBuffer.Slice ( 0, n );
-			var ImagValues = UnZippedBuffer.Slice ( n, n );
 
 			ArrayZip.UnZipInPlacePow2 ( UnZippedBuffer ); // Unzip
+
+			var RealValues = UnZippedBuffer.Slice ( 0, n );
+			var ImagValues = UnZippedBuffer.Slice ( n, n );
 
 			FFT ( RealValues, ImagValues, forward );
 
 			if ( !flags.HasFlag ( FftFlags.DoNotRezip ) )
 				ArrayZip.ZipInPlacePow2 ( UnZippedBuffer ); // Re-zip
-			}
+			}		
 
 		/// <summary>
 		/// Compute the forward or inverse Fourier Transform of complex-valued data.
@@ -250,7 +251,7 @@ namespace Aelian.FFT
 				for ( int k = 0; k < n; k += m )
 					{
 					VecIndexEven = k >> _Vector128SizeShift;
-					VecIndexOdd = VecIndexEven + ( HalfM >> _Vector128SizeShift );
+					VecIndexOdd = VecIndexEven + VectorizedOpCount;
 
 					for ( int i = 0; i < VectorizedOpCount; i++, VecIndexEven++, VecIndexOdd++ )
 						{
@@ -294,7 +295,7 @@ namespace Aelian.FFT
 				for ( int k = 0; k < n; k += m )
 					{
 					VecIndexEven = k >> _Vector256SizeShift;
-					VecIndexOdd = VecIndexEven + ( HalfM >> _Vector256SizeShift );
+					VecIndexOdd = VecIndexEven + VectorizedOpCount;
 
 					for ( int i = 0; i < VectorizedOpCount; i++, VecIndexEven++, VecIndexOdd++ )
 						{
@@ -339,7 +340,7 @@ namespace Aelian.FFT
 					for ( int k = 0; k < n; k += m )
 						{
 						VecIndexEven = k >> _Vector512SizeShift;
-						VecIndexOdd = VecIndexEven + ( HalfM >> _Vector512SizeShift );
+						VecIndexOdd = VecIndexEven + VectorizedOpCount;
 
 						for ( int i = 0; i < VectorizedOpCount; i++, VecIndexEven++, VecIndexOdd++ )
 							{
@@ -404,6 +405,37 @@ namespace Aelian.FFT
 		/// <exception cref="NotSupportedException">Buffer length is shorter than 16.</exception>
 		public static void RealFFT ( Span<Complex> buffer, bool forward, FftFlags flags = FftFlags.None )
 			=> RealFFT ( MemoryMarshal.Cast<Complex, double> ( buffer ), forward, flags );
+
+		/// <summary>
+		/// Compute the forward or inverse Fourier Transform of real-valued data.
+		/// The data is modified in place.
+		/// 
+		/// Note that a forward transform takes real-valued data as inputs and outputs complex valued data as interleaved real and imaginary values,
+		/// whereas an inverse transform takes complex valued data as interleaved real and imaginary values as inputs and outputs real-valued data.
+		/// 
+		/// In case of a forward transform, the output values at index 0 and 1 will be the DC and Nyquist components respectively.
+		/// 
+		/// Note that a forward transform using this method only returns half of the symmetrical spectrum (the mirrored other half is identical)
+		/// </summary>
+		/// <param name="buffer">The real-valued or interleaved complex-valued source data. Will be overwritten by the output data. Length must be a power of 2 and at least 16.</param>
+		/// <param name="forward">Specifies whether to perform a forward or inverse transform.</param>
+		/// <param name="flags">Specifies how to process the output data, default is None.</param>
+		/// <exception cref="NotSupportedException">Buffer length is shorter than 16.</exception>
+		public static void RealFFT ( Span<double> buffer, bool forward, FftFlags flags = FftFlags.None )
+			{
+			var N = buffer.Length >> 1;
+
+			ArrayZip.UnZipInPlacePow2 ( buffer ); // Unzip
+
+			var RealValues = buffer.Slice ( 0, N );
+			var ImagValues = buffer.Slice ( N, N );
+
+			var NormalizeFactor = flags.HasFlag ( FftFlags.DoNotNormalize ) ? ( N * 2.0 ) : 1.0; // TODO: This is wonky, we should be able to skip normalization alltogether. More research needed.
+			RealFFT ( RealValues, ImagValues, forward, NormalizeFactor );
+
+			if ( !flags.HasFlag ( FftFlags.DoNotRezip ) )
+				ArrayZip.ZipInPlacePow2 ( buffer ); // Re-zip
+			}
 
 		/// <summary>
 		/// Compute the forward or inverse Fourier Transform of real-valued data.
@@ -569,37 +601,6 @@ namespace Aelian.FFT
 
 				FFT ( RealValues, ImagValues, false, normalizeFactor );
 				}
-			}
-
-		/// <summary>
-		/// Compute the forward or inverse Fourier Transform of real-valued data.
-		/// The data is modified in place.
-		/// 
-		/// Note that a forward transform takes real-valued data as inputs and outputs complex valued data as interleaved real and imaginary values,
-		/// whereas an inverse transform takes complex valued data as interleaved real and imaginary values as inputs and outputs real-valued data.
-		/// 
-		/// In case of a forward transform, the output values at index 0 and 1 will be the DC and Nyquist components respectively.
-		/// 
-		/// Note that a forward transform using this method only returns half of the symmetrical spectrum (the mirrored other half is identical)
-		/// </summary>
-		/// <param name="buffer">The real-valued or interleaved complex-valued source data. Will be overwritten by the output data. Length must be a power of 2 and at least 16.</param>
-		/// <param name="forward">Specifies whether to perform a forward or inverse transform.</param>
-		/// <param name="flags">Specifies how to process the output data, default is None.</param>
-		/// <exception cref="NotSupportedException">Buffer length is shorter than 16.</exception>
-		public static void RealFFT ( Span<double> buffer, bool forward, FftFlags flags = FftFlags.None )
-			{
-			var N = buffer.Length >> 1;
-
-			ArrayZip.UnZipInPlacePow2 ( buffer ); // Unzip
-
-			var RealValues = buffer.Slice ( 0, N );
-			var ImagValues = buffer.Slice ( N, N );
-
-			var NormalizeFactor = flags.HasFlag ( FftFlags.DoNotNormalize ) ? ( N * 2.0 ) : 1.0; // TODO: This is wonky, we should be able to skip normalization alltogether. More research needed.
-			RealFFT ( RealValues, ImagValues, forward, NormalizeFactor );
-
-			if ( !flags.HasFlag ( FftFlags.DoNotRezip ) )
-				ArrayZip.ZipInPlacePow2 ( buffer ); // Re-zip
-			}
+			}		
 		}
 	}
