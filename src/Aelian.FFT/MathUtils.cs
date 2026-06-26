@@ -7,7 +7,7 @@
 //
 // MIT License
 //   
-// Copyright (c) 2024 Bas Tossings / Aelian
+// Copyright (c) 2026 Bas Tossings / Aelian
 //   
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
