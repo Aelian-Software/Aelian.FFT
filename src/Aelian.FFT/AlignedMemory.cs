@@ -28,7 +28,6 @@
 // SOFTWARE.
 
 using System;
-using System.Numerics;
 using System.Runtime.InteropServices;
 
 namespace Aelian.FFT;
