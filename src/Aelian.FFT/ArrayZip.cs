@@ -61,8 +61,8 @@ internal static class ArrayZip
 
 			// We skip indices 0 and N-1 as they never change position
 
-			AddUnZipCycleDecompositions ( UnZipCycleDecompositions, N, i );
-			AddZipCycleDecompositions ( ZipCycleDecompositions, N, i );
+			AddCycleDecompositions ( UnZipCycleDecompositions, N, i, true );
+			AddCycleDecompositions ( ZipCycleDecompositions, N, i, false );
 			}
 
 		UnZipCycleDecompositions[Constants.MaxTableDepth + 1] = UnZipCycleDecompositions.Count;
@@ -72,14 +72,18 @@ internal static class ArrayZip
 		_ZipCycleDecompositions = ZipCycleDecompositions.ToArray ();
 		}
 
-	private static void AddUnZipCycleDecompositions ( List<int> cycleDecompositions, int N, int bitCount )
+	private static void AddCycleDecompositions ( List<int> cycleDecompositions, int N, int bitCount, bool unZip )
 		{
 		for ( int CycleLeader = 1; CycleLeader < N - 1; CycleLeader++ )
 			{
-			var Index = MathUtils.RotateBitsRight ( CycleLeader, bitCount );
+			var Index = unZip
+				? MathUtils.RotateBitsRight ( CycleLeader, bitCount )
+				: MathUtils.RotateBitsLeft ( CycleLeader, bitCount );
 
 			while ( Index != CycleLeader && Index > CycleLeader )
-				Index = MathUtils.RotateBitsRight ( Index, bitCount );
+				Index = unZip
+					? MathUtils.RotateBitsRight ( Index, bitCount )
+					: MathUtils.RotateBitsLeft ( Index, bitCount );
 
 			if ( Index != CycleLeader )
 				continue;
@@ -96,40 +100,10 @@ internal static class ArrayZip
 				{
 				cycleDecompositions.Add ( Index );
 				CycleLength++;
-				Index = MathUtils.RotateBitsRight ( Index, bitCount );
-				}
-			while ( Index != CycleLeader );
 
-			cycleDecompositions[CycleHeaderIndex] = CycleLength;
-			cycleDecompositions[CycleHeaderIndex + 1] = cycleDecompositions[^1];
-			}
-		}
-
-	private static void AddZipCycleDecompositions ( List<int> cycleDecompositions, int N, int bitCount )
-		{
-		for ( int CycleLeader = 1; CycleLeader < N - 1; CycleLeader++ )
-			{
-			var Index = MathUtils.RotateBitsLeft ( CycleLeader, bitCount );
-
-			while ( Index != CycleLeader && Index > CycleLeader )
-				Index = MathUtils.RotateBitsLeft ( Index, bitCount );
-
-			if ( Index != CycleLeader )
-				continue;
-
-			var CycleHeaderIndex = cycleDecompositions.Count;
-			var CycleLength = 0;
-
-			cycleDecompositions.Add ( 0 );
-			cycleDecompositions.Add ( 0 );
-
-			Index = CycleLeader;
-
-			do
-				{
-				cycleDecompositions.Add ( Index );
-				CycleLength++;
-				Index = MathUtils.RotateBitsLeft ( Index, bitCount );
+				Index = unZip
+					? MathUtils.RotateBitsRight ( Index, bitCount )
+					: MathUtils.RotateBitsLeft ( Index, bitCount );
 				}
 			while ( Index != CycleLeader );
 
