@@ -39,7 +39,7 @@ namespace Aelian.FFT;
 public unsafe class AlignedMemory<T> : Disposable<AlignedMemory<T>>
 	where T : unmanaged
 	{
-	public void* DataPointer { get; private set; }
+	public T* DataPointer { get; private set; }
 	public int Length { get; }
 	public int ByteLength { get; }
 	public nuint MemoryAlignmentBoundaryBytes { get; }
@@ -49,7 +49,7 @@ public unsafe class AlignedMemory<T> : Disposable<AlignedMemory<T>>
 		Length = length;
 		ByteLength = Length * sizeof ( T );
 		MemoryAlignmentBoundaryBytes = memoryAlignmentBoundaryBytes;
-		DataPointer = NativeMemory.AlignedAlloc ( (nuint) ByteLength, MemoryAlignmentBoundaryBytes );
+		DataPointer = (T*) NativeMemory.AlignedAlloc ( (nuint) ByteLength, MemoryAlignmentBoundaryBytes );
 		}
 
 	/// <summary>

@@ -161,7 +161,7 @@ public static class FastFourierTransform
 	/// <param name="forward">Specifies whether to perform a forward or inverse transform.</param>
 	/// <param name="normalizeFactor">Normalization factor, should be left at the default of 1.0 in most cases.</param>
 	/// <exception cref="ArgumentException">Buffer length is not a power of 2 or buffer lenghts do not match.</exception>
-	public static void FFT ( Span<double> complexRealValues, Span<double> complexImagValues, bool forward, double normalizeFactor = 1.0 )
+	public static unsafe void FFT ( Span<double> complexRealValues, Span<double> complexImagValues, bool forward, double normalizeFactor = 1.0 )
 		{
 		if ( _RealRootsOfUnity is null || _ImagRootsOfUnity is null || _ImagInverseRootsOfUnity is null )
 			throw new InvalidOperationException ( "FastFourierTransform.Initialize () has not yet been called" );
@@ -191,208 +191,282 @@ public static class FastFourierTransform
 		double EvenReal, EvenImag, OddReal, OddImag, WmReal, WmImag, TReal, TImag;
 		int IndexEven, IndexOdd;
 
-		for ( int s = 1; s <= LogN && s < ( _Vector128SizeShift + 1 ); s++ )
+		fixed ( double* pComplexRealValues = complexRealValues )
+		fixed ( double* pComplexImagValues = complexImagValues )
 			{
-			var IterRealRootsOfUnity = RealRootsOfUnity[s].AsSpan ();
-			var IterImagRootsOfUnity = ImagRootsOfUnity[s].AsSpan ();
-
-			var m = 1 << s;
-			var HalfM = m >> 1;
-
-			for ( int k = 0; k < n; k += m )
+			for ( int s = 1; s <= LogN && s < ( _Vector128SizeShift + 1 ); s++ )
 				{
-				IndexEven = k;
-				IndexOdd = IndexEven + HalfM;
-
-				// Process j == 0 differently, since at that index, WmReal is always 1 and WmImag is always 0
-
-				EvenReal = complexRealValues[IndexEven];
-				EvenImag = complexImagValues[IndexEven];
-				OddReal = complexRealValues[IndexOdd];
-				OddImag = complexImagValues[IndexOdd];
-
-				complexRealValues[IndexEven] = EvenReal + OddReal;
-				complexImagValues[IndexEven] = EvenImag + OddImag;
-				complexRealValues[IndexOdd] = EvenReal - OddReal;
-				complexImagValues[IndexOdd] = EvenImag - OddImag;
-
-				IndexEven++;
-				IndexOdd++;
-
-				// After that, continue as normal
-
-				for ( int j = 1; j < HalfM; j++, IndexEven++, IndexOdd++ )
-					{
-					EvenReal = complexRealValues[IndexEven];
-					EvenImag = complexImagValues[IndexEven];
-					OddReal = complexRealValues[IndexOdd];
-					OddImag = complexImagValues[IndexOdd];
-					WmReal = IterRealRootsOfUnity[j];
-					WmImag = IterImagRootsOfUnity[j];
-
-					TReal = WmReal * OddReal - WmImag * OddImag;
-					TImag = WmImag * OddReal + WmReal * OddImag;
-
-					complexRealValues[IndexEven] = EvenReal + TReal;
-					complexImagValues[IndexEven] = EvenImag + TImag;
-					complexRealValues[IndexOdd] = EvenReal - TReal;
-					complexImagValues[IndexOdd] = EvenImag - TImag;
-					}
-				}
-			}
-
-		// Vectorized
-
-		// 128
-
-			{
-			var Vec128RealValues = MemoryMarshal.Cast<double, Vector128<double>> ( complexRealValues );
-			var Vec128ImagValues = MemoryMarshal.Cast<double, Vector128<double>> ( complexImagValues );
-
-			int VecIndexEven, VecIndexOdd;
-			Vector128<double> VecEvenReal, VecEvenImag, VecOddReal, VecOddImag, VecWmReal, VecWmImag, VecTReal, VecTImag;
-
-			const int s = _Vector128SizeShift + 1;
-			var IterRealRootsOfUnity = RealRootsOfUnity[s].AsSpan ();
-			var IterImagRootsOfUnity = ImagRootsOfUnity[s].AsSpan ();
-			var VecRealRootsOfUnity = MemoryMarshal.Cast<double, Vector128<double>> ( IterRealRootsOfUnity );
-			var VecImagRootsOfUnity = MemoryMarshal.Cast<double, Vector128<double>> ( IterImagRootsOfUnity );
-
-			var m = 1 << s;
-			var HalfM = m >> 1;
-			var VectorizedOpCount = HalfM >> _Vector128SizeShift;
-
-			for ( int k = 0; k < n; k += m )
-				{
-				VecIndexEven = k >> _Vector128SizeShift;
-				VecIndexOdd = VecIndexEven + VectorizedOpCount;
-
-				for ( int i = 0; i < VectorizedOpCount; i++, VecIndexEven++, VecIndexOdd++ )
-					{
-					VecEvenReal = Vec128RealValues[VecIndexEven];
-					VecEvenImag = Vec128ImagValues[VecIndexEven];
-					VecOddReal = Vec128RealValues[VecIndexOdd];
-					VecOddImag = Vec128ImagValues[VecIndexOdd];
-					VecWmReal = VecRealRootsOfUnity[i];
-					VecWmImag = VecImagRootsOfUnity[i];
-
-					VecTReal = VecWmReal * VecOddReal - VecWmImag * VecOddImag;
-					VecTImag = VecWmImag * VecOddReal + VecWmReal * VecOddImag;
-
-					Vec128RealValues[VecIndexEven] = VecEvenReal + VecTReal;
-					Vec128ImagValues[VecIndexEven] = VecEvenImag + VecTImag;
-					Vec128RealValues[VecIndexOdd] = VecEvenReal - VecTReal;
-					Vec128ImagValues[VecIndexOdd] = VecEvenImag - VecTImag;
-					}
-				}
-			}
-
-		// 256
-
-			{
-			var Vec256RealValues = MemoryMarshal.Cast<double, Vector256<double>> ( complexRealValues );
-			var Vec256ImagValues = MemoryMarshal.Cast<double, Vector256<double>> ( complexImagValues );
-
-			int VecIndexEven, VecIndexOdd;
-			Vector256<double> VecEvenReal, VecEvenImag, VecOddReal, VecOddImag, VecWmReal, VecWmImag, VecTReal, VecTImag;
-
-			const int s = _Vector256SizeShift + 1;
-			var IterRealRootsOfUnity = RealRootsOfUnity[s].AsSpan ();
-			var IterImagRootsOfUnity = ImagRootsOfUnity[s].AsSpan ();
-			var VecRealRootsOfUnity = MemoryMarshal.Cast<double, Vector256<double>> ( IterRealRootsOfUnity );
-			var VecImagRootsOfUnity = MemoryMarshal.Cast<double, Vector256<double>> ( IterImagRootsOfUnity );
-
-			var m = 1 << s;
-			var HalfM = m >> 1;
-			var VectorizedOpCount = HalfM >> _Vector256SizeShift;
-
-			for ( int k = 0; k < n; k += m )
-				{
-				VecIndexEven = k >> _Vector256SizeShift;
-				VecIndexOdd = VecIndexEven + VectorizedOpCount;
-
-				for ( int i = 0; i < VectorizedOpCount; i++, VecIndexEven++, VecIndexOdd++ )
-					{
-					VecEvenReal = Vec256RealValues[VecIndexEven];
-					VecEvenImag = Vec256ImagValues[VecIndexEven];
-					VecOddReal = Vec256RealValues[VecIndexOdd];
-					VecOddImag = Vec256ImagValues[VecIndexOdd];
-					VecWmReal = VecRealRootsOfUnity[i];
-					VecWmImag = VecImagRootsOfUnity[i];
-
-					VecTReal = VecWmReal * VecOddReal - VecWmImag * VecOddImag;
-					VecTImag = VecWmImag * VecOddReal + VecWmReal * VecOddImag;
-
-					Vec256RealValues[VecIndexEven] = VecEvenReal + VecTReal;
-					Vec256ImagValues[VecIndexEven] = VecEvenImag + VecTImag;
-					Vec256RealValues[VecIndexOdd] = VecEvenReal - VecTReal;
-					Vec256ImagValues[VecIndexOdd] = VecEvenImag - VecTImag;
-					}
-				}
-			}
-
-		// 512
-
-		var Vec512RealValues = MemoryMarshal.Cast<double, Vector512<double>> ( complexRealValues );
-		var Vec512ImagValues = MemoryMarshal.Cast<double, Vector512<double>> ( complexImagValues );
-
-			{
-			int VecIndexEven, VecIndexOdd;
-			Vector512<double> VecEvenReal, VecEvenImag, VecOddReal, VecOddImag, VecWmReal, VecWmImag, VecTReal, VecTImag;
-
-			for ( int s = ( _Vector512SizeShift + 1 ); s <= LogN; s++ )
-				{
-				var IterRealRootsOfUnity = RealRootsOfUnity[s].AsSpan ();
-				var IterImagRootsOfUnity = ImagRootsOfUnity[s].AsSpan ();
-				var VecRealRootsOfUnity = MemoryMarshal.Cast<double, Vector512<double>> ( IterRealRootsOfUnity );
-				var VecImagRootsOfUnity = MemoryMarshal.Cast<double, Vector512<double>> ( IterImagRootsOfUnity );
-
 				var m = 1 << s;
 				var HalfM = m >> 1;
-				var VectorizedOpCount = HalfM >> _Vector512SizeShift;
+
+				var pIterRealRootsOfUnityStart = RealRootsOfUnity[s].DataPointer;
+				var pIterImagRootsOfUnityStart = ImagRootsOfUnity[s].DataPointer;
 
 				for ( int k = 0; k < n; k += m )
 					{
-					VecIndexEven = k >> _Vector512SizeShift;
+					IndexEven = k;
+					IndexOdd = IndexEven + HalfM;
+
+					var pComplexRealValueEven = pComplexRealValues + IndexEven;
+					var pComplexRealValueOdd = pComplexRealValues + IndexOdd;
+					var pComplexImagValueEven = pComplexImagValues + IndexEven;
+					var pComplexImagValueOdd = pComplexImagValues + IndexOdd;
+					var pIterRealRootsOfUnity = pIterRealRootsOfUnityStart;
+					var pIterImagRootsOfUnity = pIterImagRootsOfUnityStart;
+
+					// Process j == 0 differently, since at that index, WmReal is always 1 and WmImag is always 0
+
+					EvenReal = *pComplexRealValueEven;
+					EvenImag = *pComplexImagValueEven;
+					OddReal = *pComplexRealValueOdd;
+					OddImag = *pComplexImagValueOdd;
+
+					*pComplexRealValueEven = EvenReal + OddReal;
+					*pComplexImagValueEven = EvenImag + OddImag;
+					*pComplexRealValueOdd = EvenReal - OddReal;
+					*pComplexImagValueOdd = EvenImag - OddImag;
+
+					pComplexRealValueEven++;
+					pComplexRealValueOdd++;
+					pComplexImagValueEven++;
+					pComplexImagValueOdd++;
+
+					// After that, continue as normal
+
+					for 
+						(
+						int j = 1; j < HalfM; j++,  
+						pIterRealRootsOfUnity++, 
+						pIterImagRootsOfUnity++,
+						pComplexRealValueEven++,
+						pComplexRealValueOdd++,
+						pComplexImagValueEven++,
+						pComplexImagValueOdd++
+						)
+						{
+						EvenReal = *pComplexRealValueEven;
+						EvenImag = *pComplexImagValueEven;
+						OddReal = *pComplexRealValueOdd;
+						OddImag = *pComplexImagValueOdd;
+						WmReal = *pIterRealRootsOfUnity;
+						WmImag = *pIterImagRootsOfUnity;
+
+						TReal = WmReal * OddReal - WmImag * OddImag;
+						TImag = WmImag * OddReal + WmReal * OddImag;
+
+						*pComplexRealValueEven = EvenReal + TReal;
+						*pComplexImagValueEven = EvenImag + TImag;
+						*pComplexRealValueOdd = EvenReal - TReal;
+						*pComplexImagValueOdd = EvenImag - TImag;
+						}
+					}
+				}
+
+			// Vectorized
+
+			// 128
+
+				{
+				var pVec128RealValues = (Vector128<double>*) pComplexRealValues;
+				var pVec128ImagValues = (Vector128<double>*) pComplexImagValues;
+
+				int VecIndexEven, VecIndexOdd;
+				Vector128<double> VecEvenReal, VecEvenImag, VecOddReal, VecOddImag, VecWmReal, VecWmImag, VecTReal, VecTImag;
+
+				const int s = _Vector128SizeShift + 1;
+
+				var m = 1 << s;
+				var HalfM = m >> 1;
+				var VectorizedOpCount = HalfM >> _Vector128SizeShift;
+
+				var pVecRealRootsOfUnityStart = (Vector128<double>*) RealRootsOfUnity[s].DataPointer;
+				var pVecImagRootsOfUnityStart = (Vector128<double>*) ImagRootsOfUnity[s].DataPointer;
+
+				for ( int k = 0; k < n; k += m )
+					{
+					VecIndexEven = k >> _Vector128SizeShift;
 					VecIndexOdd = VecIndexEven + VectorizedOpCount;
 
-					for ( int i = 0; i < VectorizedOpCount; i++, VecIndexEven++, VecIndexOdd++ )
+					var pVec128RealValueEven = pVec128RealValues + VecIndexEven;
+					var pVec128ImagValueEven = pVec128ImagValues + VecIndexEven;
+					var pVec128RealValueOdd = pVec128RealValues + VecIndexOdd;
+					var pVec128ImagValueOdd = pVec128ImagValues + VecIndexOdd;
+					var pVecRealRootsOfUnity = pVecRealRootsOfUnityStart;
+					var pVecImagRootsOfUnity = pVecImagRootsOfUnityStart;
+
+					for 
+						(
+						int i = 0; i < VectorizedOpCount; i++, 
+						pVecRealRootsOfUnity++, 
+						pVecImagRootsOfUnity++,
+						pVec128RealValueEven++,
+						pVec128ImagValueEven++,
+						pVec128RealValueOdd++,
+						pVec128ImagValueOdd++
+						)
 						{
-						VecEvenReal = Vec512RealValues[VecIndexEven];
-						VecEvenImag = Vec512ImagValues[VecIndexEven];
-						VecOddReal = Vec512RealValues[VecIndexOdd];
-						VecOddImag = Vec512ImagValues[VecIndexOdd];
-						VecWmReal = VecRealRootsOfUnity[i];
-						VecWmImag = VecImagRootsOfUnity[i];
+						VecEvenReal = *pVec128RealValueEven;
+						VecEvenImag = *pVec128ImagValueEven;
+						VecOddReal = *pVec128RealValueOdd;
+						VecOddImag = *pVec128ImagValueOdd;
+						VecWmReal = *pVecRealRootsOfUnity;
+						VecWmImag = *pVecImagRootsOfUnity;
 
 						VecTReal = VecWmReal * VecOddReal - VecWmImag * VecOddImag;
 						VecTImag = VecWmImag * VecOddReal + VecWmReal * VecOddImag;
 
-						Vec512RealValues[VecIndexEven] = VecEvenReal + VecTReal;
-						Vec512ImagValues[VecIndexEven] = VecEvenImag + VecTImag;
-						Vec512RealValues[VecIndexOdd] = VecEvenReal - VecTReal;
-						Vec512ImagValues[VecIndexOdd] = VecEvenImag - VecTImag;
+						*pVec128RealValueEven = VecEvenReal + VecTReal;
+						*pVec128ImagValueEven = VecEvenImag + VecTImag;
+						*pVec128RealValueOdd = VecEvenReal - VecTReal;
+						*pVec128ImagValueOdd = VecEvenImag - VecTImag;
 						}
 					}
 				}
-			}
 
-		// Scale the result when doing a reverse transform
+			// 256
 
-		const int VectorSize = 1 << _Vector512SizeShift;
-
-		if ( !forward )
-			{
-			// TODO: handle cases where n < 8
-			var VectorizedOpCount = n >> _Vector512SizeShift;
-			var Divisor = Vector512.Create<double> ( ( 1.0 / n ) * normalizeFactor );
-
-			Debug.Assert ( n % VectorSize == 0 );
-
-			for ( int i = 0; i < VectorizedOpCount; i++ )
 				{
-				Vec512RealValues[i] *= Divisor;
-				Vec512ImagValues[i] *= Divisor;
+				var pVec256RealValues = (Vector256<double>*) pComplexRealValues;
+				var pVec256ImagValues = (Vector256<double>*) pComplexImagValues;
+
+				int VecIndexEven, VecIndexOdd;
+				Vector256<double> VecEvenReal, VecEvenImag, VecOddReal, VecOddImag, VecWmReal, VecWmImag, VecTReal, VecTImag;
+
+				const int s = _Vector256SizeShift + 1;
+
+				var m = 1 << s;
+				var HalfM = m >> 1;
+				var VectorizedOpCount = HalfM >> _Vector256SizeShift;
+
+				var pVecRealRootsOfUnityStart = (Vector256<double>*) RealRootsOfUnity[s].DataPointer;
+				var pVecImagRootsOfUnityStart = (Vector256<double>*) ImagRootsOfUnity[s].DataPointer;
+
+				for ( int k = 0; k < n; k += m )
+					{
+					VecIndexEven = k >> _Vector256SizeShift;
+					VecIndexOdd = VecIndexEven + VectorizedOpCount;
+
+					var pVec256RealValueEven = pVec256RealValues + VecIndexEven;
+					var pVec256ImagValueEven = pVec256ImagValues + VecIndexEven;
+					var pVec256RealValueOdd = pVec256RealValues + VecIndexOdd;
+					var pVec256ImagValueOdd = pVec256ImagValues + VecIndexOdd;
+					var pVecRealRootsOfUnity = pVecRealRootsOfUnityStart;
+					var pVecImagRootsOfUnity = pVecImagRootsOfUnityStart;
+
+					for 
+						( 
+						int i = 0; i < VectorizedOpCount; i++, 
+						pVecRealRootsOfUnity++, 
+						pVecImagRootsOfUnity++,
+						pVec256RealValueEven++,
+						pVec256ImagValueEven++,
+						pVec256RealValueOdd++,
+						pVec256ImagValueOdd++
+						)
+						{
+						VecEvenReal = *pVec256RealValueEven;
+						VecEvenImag = *pVec256ImagValueEven;
+						VecOddReal = *pVec256RealValueOdd;
+						VecOddImag = *pVec256ImagValueOdd;
+						VecWmReal = *pVecRealRootsOfUnity;
+						VecWmImag = *pVecImagRootsOfUnity;
+
+						VecTReal = VecWmReal * VecOddReal - VecWmImag * VecOddImag;
+						VecTImag = VecWmImag * VecOddReal + VecWmReal * VecOddImag;
+
+						*pVec256RealValueEven = VecEvenReal + VecTReal;
+						*pVec256ImagValueEven = VecEvenImag + VecTImag;
+						*pVec256RealValueOdd = VecEvenReal - VecTReal;
+						*pVec256ImagValueOdd = VecEvenImag - VecTImag;
+						}
+					}
+				}
+
+			// 512
+
+			var pVec512RealValues = (Vector512<double>*) pComplexRealValues;
+			var pVec512ImagValues = (Vector512<double>*) pComplexImagValues;
+
+				{
+				int VecIndexEven, VecIndexOdd;
+				Vector512<double> VecEvenReal, VecEvenImag, VecOddReal, VecOddImag, VecWmReal, VecWmImag, VecTReal, VecTImag;
+
+				for ( int s = ( _Vector512SizeShift + 1 ); s <= LogN; s++ )
+					{
+					var m = 1 << s;
+					var HalfM = m >> 1;
+					var VectorizedOpCount = HalfM >> _Vector512SizeShift;
+
+					var pVecRealRootsOfUnityStart = (Vector512<double>*) RealRootsOfUnity[s].DataPointer;
+					var pVecImagRootsOfUnityStart = (Vector512<double>*) ImagRootsOfUnity[s].DataPointer;
+
+					for ( int k = 0; k < n; k += m )
+						{
+						VecIndexEven = k >> _Vector512SizeShift;
+						VecIndexOdd = VecIndexEven + VectorizedOpCount;
+
+						var pVec512RealValueEven = pVec512RealValues + VecIndexEven;
+						var pVec512ImagValueEven = pVec512ImagValues + VecIndexEven;
+						var pVec512RealValueOdd = pVec512RealValues + VecIndexOdd;
+						var pVec512ImagValueOdd = pVec512ImagValues + VecIndexOdd;
+						var pVecRealRootsOfUnity = pVecRealRootsOfUnityStart;
+						var pVecImagRootsOfUnity = pVecImagRootsOfUnityStart;
+
+						for 
+							(
+							int i = 0; i < VectorizedOpCount; i++, 							
+							pVecRealRootsOfUnity++, 
+							pVecImagRootsOfUnity++,
+							pVec512RealValueEven++,
+							pVec512ImagValueEven++,
+							pVec512RealValueOdd++,
+							pVec512ImagValueOdd++
+							)
+							{
+							VecEvenReal = *pVec512RealValueEven;
+							VecEvenImag = *pVec512ImagValueEven;
+							VecOddReal = *pVec512RealValueOdd;
+							VecOddImag = *pVec512ImagValueOdd;
+							VecWmReal = *pVecRealRootsOfUnity;
+							VecWmImag = *pVecImagRootsOfUnity;
+
+							VecTReal = VecWmReal * VecOddReal - VecWmImag * VecOddImag;
+							VecTImag = VecWmImag * VecOddReal + VecWmReal * VecOddImag;
+
+							*pVec512RealValueEven = VecEvenReal + VecTReal;
+							*pVec512ImagValueEven = VecEvenImag + VecTImag;
+							*pVec512RealValueOdd = VecEvenReal - VecTReal;
+							*pVec512ImagValueOdd = VecEvenImag - VecTImag;
+							}
+						}
+					}
+				}
+
+			// Scale the result when doing a reverse transform
+
+			const int VectorSize = 1 << _Vector512SizeShift;
+
+			if ( !forward )
+				{
+				// TODO: handle cases where n < 8
+				var VectorizedOpCount = n >> _Vector512SizeShift;
+				var Divisor = Vector512.Create<double> ( ( 1.0 / n ) * normalizeFactor );
+
+				Debug.Assert ( n % VectorSize == 0 );
+
+				var pVec512RealValue = pVec512RealValues;
+				var pVec512ImagValue = pVec512ImagValues;
+
+				for 
+					(
+					int i = 0; i < VectorizedOpCount; i++,
+					pVec512RealValue++,
+					pVec512ImagValue++
+					)
+					{
+					*pVec512RealValue *= Divisor;
+					*pVec512ImagValue *= Divisor;
+					}
 				}
 			}
 		}
