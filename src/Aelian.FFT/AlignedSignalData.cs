@@ -42,10 +42,10 @@ namespace Aelian.FFT;
 /// <remarks>
 /// You always need to dispose instances of this class after use or it will leak memory!
 /// </remarks>
-public unsafe class AlignedSignalData : Disposable<AlignedSignalData>
+public class AlignedSignalData : AlignedMemory<byte>
 	{
-	private const nuint _MemoryAlignmentBoundaryBytes = 64;
-	private void* _DataPointer;
+	private const nuint _MemoryAlignmentBoundaryBytes = 64; // Align to 512 bits for optimal SIMD performance
+
 	private int _DoubleLength;
 
 	/// <summary>
@@ -58,17 +58,10 @@ public unsafe class AlignedSignalData : Disposable<AlignedSignalData>
 	/// </summary>
 	public int ComplexLength => _DoubleLength >> 1;
 
-	/// <summary>
-	/// The length of the data in bytes
-	/// </summary>
-	public int ByteLength => _DoubleLength * sizeof ( double );
-
-	private AlignedSignalData ( int doubleLength )
+	protected AlignedSignalData ( int doubleLength )
+		: base ( sizeof ( double ) * doubleLength, _MemoryAlignmentBoundaryBytes )
 		{
 		_DoubleLength = doubleLength;
-
-		var ByteLength = sizeof ( double ) * _DoubleLength;
-		_DataPointer = NativeMemory.AlignedAlloc ( (nuint) ByteLength, _MemoryAlignmentBoundaryBytes );
 		}
 
 	/// <summary>
@@ -86,22 +79,16 @@ public unsafe class AlignedSignalData : Disposable<AlignedSignalData>
 	public static AlignedSignalData AllocateFromComplexSize ( int complexSize ) => new AlignedSignalData ( complexSize << 1 );
 
 	/// <summary>
-	/// Get a Span pointing to the raw signal data bytes
-	/// </summary>
-	/// <returns>A Span pointing to the raw signal data bytes.</returns>
-	public Span<byte> AsRawData () => new Span<byte> ( _DataPointer, ByteLength );
-
-	/// <summary>
 	/// Get a Span pointing to the signal data, interpreted as real-valued samples.
 	/// </summary>
 	/// <returns>A Span pointing to the signal data, interpreted as real-valued samples.</returns>
-	public Span<double> AsReal () => new Span<double> ( _DataPointer, RealLength );
+	public Span<double> AsReal () => MemoryMarshal.Cast<byte, double> ( AsSpan () );
 
 	/// <summary>
 	/// Get a Span pointing to the signal data, interpreted as complex values.
 	/// </summary>
 	/// <returns>A Span pointing to the signal data, interpreted as complex values.</returns>
-	public Span<Complex> AsComplex () => new Span<Complex> ( _DataPointer, ComplexLength );
+	public Span<Complex> AsComplex () => MemoryMarshal.Cast<byte, Complex> ( AsSpan () );
 
 	/// <summary>
 	/// Copy the signal data to an array of real-valued samples.
@@ -114,35 +101,5 @@ public unsafe class AlignedSignalData : Disposable<AlignedSignalData>
 	/// </summary>
 	/// <returns>An array of complex values.</returns>
 	public Complex[] ToComplexArray () => AsComplex ().ToArray ();
-
-	/// <summary>
-	/// Make an exact clone of this instance of AlignedSignalData.
-	/// </summary>
-	/// <returns>An exact clone of this instance of AlignedSignalData.</returns>
-	public AlignedSignalData Clone ()
-		{
-		var Out = new AlignedSignalData ( _DoubleLength );
-		CopyTo ( Out );
-		return Out;
-		}
-
-	/// <summary>
-	/// Copy the data in this AlignedSignalData instance to another instance of AlignedSignalData. This method will overwrite the signal data in the destination instance.
-	/// </summary>
-	/// <param name="destination">The destination AlignedSignalData instance.</param>
-	/// <exception cref="ArgumentException">The signal data lengths do not match.</exception>
-	public void CopyTo ( AlignedSignalData destination )
-		{
-		if ( destination.ByteLength != ByteLength )
-			throw new ArgumentException ( "Source and destination length must be equal", nameof ( destination ) );
-
-		AsRawData ().CopyTo ( destination.AsRawData () );
-		}
-
-	protected override void FreeUnmanagedResources ()
-		{
-		NativeMemory.AlignedFree ( _DataPointer );
-		_DataPointer = null;
-		}
 	}
 
