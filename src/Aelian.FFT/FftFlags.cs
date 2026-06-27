@@ -35,7 +35,6 @@ namespace Aelian.FFT;
 public enum FftFlags
 	{
 	None = 0,
-	DoNotRezip = 1,
-	DoNotNormalize = 2
+	DoNotNormalize = 1
 	}
 

@@ -121,9 +121,8 @@ public static class FastFourierTransform
 	/// </summary>
 	/// <param name="buffer">The complex-valued source data. Will be overwritten by the output data. Length must be a power of 2.</param>
 	/// <param name="forward">Specifies whether to perform a forward or inverse transform.</param>
-	/// <param name="flags">Specifies how to process the output data, default is None.</param>
 	/// <exception cref="ArgumentException">Buffer length is not a power of 2</exception>
-	public static void FFT ( Span<Complex> buffer, bool forward, FftFlags flags = FftFlags.None )
+	public static void FFT ( Span<Complex> buffer, bool forward )
 		{
 		var n = buffer.Length;
 
@@ -141,8 +140,7 @@ public static class FastFourierTransform
 
 		FFT ( RealValues, ImagValues, forward );
 
-		if ( !flags.HasFlag ( FftFlags.DoNotRezip ) )
-			ArrayZip.ZipInPlacePow2 ( UnZippedBuffer ); // Re-zip
+		ArrayZip.ZipInPlacePow2 ( UnZippedBuffer ); // Re-zip
 		}		
 
 	/// <summary>
@@ -437,11 +435,10 @@ public static class FastFourierTransform
 		var RealValues = buffer.Slice ( 0, N );
 		var ImagValues = buffer.Slice ( N, N );
 
-		var NormalizeFactor = flags.HasFlag ( FftFlags.DoNotNormalize ) ? ( N * 2.0 ) : 1.0; // TODO: This is wonky, we should be able to skip normalization alltogether. More research needed.
+		var NormalizeFactor = ( flags & FftFlags.DoNotNormalize ) != 0 ? ( N * 2.0 ) : 1.0; // TODO: This is wonky, we should be able to skip normalization alltogether. More research needed.
 		RealFFT ( RealValues, ImagValues, forward, NormalizeFactor );
 
-		if ( !flags.HasFlag ( FftFlags.DoNotRezip ) )
-			ArrayZip.ZipInPlacePow2 ( buffer ); // Re-zip
+		ArrayZip.ZipInPlacePow2 ( buffer ); // Re-zip
 		}
 
 	/// <summary>
