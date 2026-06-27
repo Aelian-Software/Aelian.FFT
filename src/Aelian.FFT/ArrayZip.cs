@@ -68,6 +68,7 @@ internal static class ArrayZip
 				var IndicesInCycle = Cycle.ToArray ();
 
 				UnZipCycleDecompositions.Add ( IndicesInCycle.Length );
+				UnZipCycleDecompositions.Add ( IndicesInCycle[^1] );
 				UnZipCycleDecompositions.AddRange ( IndicesInCycle );
 				}
 
@@ -76,6 +77,7 @@ internal static class ArrayZip
 				var IndicesInCycle = Cycle.ToArray ();
 
 				ZipCycleDecompositions.Add ( IndicesInCycle.Length );
+				ZipCycleDecompositions.Add ( IndicesInCycle[^1] );
 				ZipCycleDecompositions.AddRange ( IndicesInCycle );
 				}
 			}
@@ -151,31 +153,32 @@ internal static class ArrayZip
 		}
 
 	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
-	private static void PermuteInPlacePow2<T> ( Span<T> elements, int[] cycleDecompositions )
+	private static unsafe void PermuteInPlacePow2<T> ( Span<T> elements, int[] cycleDecompositions )
 		{
 		var N = elements.Length;
 		var LogN = MathUtils.ILog2 ( N );
 
 		Debug.Assert ( BitOperations.IsPow2 ( N ) );
 
-		var CycleDecompositionIndex = cycleDecompositions[LogN];
-		var EndCycleDecompositionIndex = cycleDecompositions[LogN + 1];
-
-		while ( CycleDecompositionIndex < EndCycleDecompositionIndex )
+		fixed ( int* pCycleDecompositions = cycleDecompositions )
 			{
-			var CycleLength = cycleDecompositions[CycleDecompositionIndex++];
-			var Index = cycleDecompositions[CycleDecompositionIndex + CycleLength - 1];
-			var Mem = elements[Index];
+			var CycleDecomposition = pCycleDecompositions + pCycleDecompositions[LogN];
+			var EndCycleDecomposition = pCycleDecompositions + pCycleDecompositions[LogN + 1];
 
-			for ( int i = 0; i < CycleLength; i++ )
+			while ( CycleDecomposition < EndCycleDecomposition )
 				{
-				var NewVal = Mem;
-				Index = cycleDecompositions[CycleDecompositionIndex + i];
-				Mem = elements[Index];
-				elements[Index] = NewVal;
-				}
+				var CycleLength = *CycleDecomposition++;
+				var Index = *CycleDecomposition++;
+				var Mem = elements[Index];
 
-			CycleDecompositionIndex += CycleLength;
+				for ( int i = 0; i < CycleLength; i++ )
+					{
+					var NewVal = Mem;
+					Index = *CycleDecomposition++;
+					Mem = elements[Index];
+					elements[Index] = NewVal;
+					}
+				}
 			}
 		}
 	}
