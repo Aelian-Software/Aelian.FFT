@@ -1,4 +1,4 @@
-#define BENCHMARK_OTHERS
+//#define BENCHMARK_OTHERS
 #define USE_ALIGNED
 
 using System;
@@ -90,10 +90,10 @@ namespace Benchmarks
 		[IterationSetup]
 		public void IterationSetup ()
 			{
-			if 
+			if
 				(
-				_IterationData is null 
-				|| _IterationSplitRealData is null 
+				_IterationData is null
+				|| _IterationSplitRealData is null
 				|| _IterationSplitImaginaryData is null
 				|| _RandomData is null
 				|| _InRe is null
@@ -308,6 +308,7 @@ namespace Benchmarks
 			for ( int i = 0; i < RunCount; i++ )
 				FftSharp.FFT.InverseReal ( _InComplex );
 			}
+#endif
 
 		public void Dispose ()
 			{
@@ -318,6 +319,5 @@ namespace Benchmarks
 #endif
 			}
 
-#endif
-			}
 		}
+	}

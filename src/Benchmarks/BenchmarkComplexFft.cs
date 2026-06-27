@@ -1,4 +1,4 @@
-#define BENCHMARK_OTHERS
+//#define BENCHMARK_OTHERS
 #define USE_ALIGNED
 
 using System;
@@ -297,5 +297,14 @@ namespace Benchmarks
 				FftSharp.FFT.Inverse ( _ComplexBuffer );
 			}
 #endif
+
+		public void Dispose ()
+			{
+#if USE_ALIGNED
+			_IterationData?.Dispose ();
+			_IterationSplitRealData?.Dispose ();
+			_IterationSplitImaginaryData?.Dispose ();
+#endif
+			}
 		}
 	}
