@@ -181,5 +181,69 @@ internal static class ArrayZip
 				}
 			}
 		}
+
+	// Slow. Do not use! Only here for reference & testing.
+	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
+	public static void ZipInPlacePow2NoLut<T> ( Span<T> elements )
+		{
+		var N = elements.Length;
+		var LogN = MathUtils.ILog2 ( N );
+
+		for ( int CycleLeader = 1; CycleLeader < N - 1; CycleLeader++ )
+			{
+			var Index = MathUtils.RotateBitsLeft ( CycleLeader, LogN );
+
+			while ( Index != CycleLeader && Index > CycleLeader )
+				Index = MathUtils.RotateBitsLeft ( Index, LogN );
+
+			if ( Index != CycleLeader )
+				continue;
+
+			var Mem = elements[CycleLeader];
+			Index = CycleLeader;
+
+			do
+				{
+				Index = MathUtils.RotateBitsLeft ( Index, LogN );
+
+				var NewVal = Mem;
+				Mem = elements[Index];
+				elements[Index] = NewVal;
+				}
+			while ( Index != CycleLeader );
+			}
+		}
+
+	// Slow. Do not use! Only here for reference & testing.
+	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
+	public static void UnZipInPlacePow2NoLut<T> ( Span<T> elements )
+		{
+		var N = elements.Length;
+		var LogN = MathUtils.ILog2 ( N );
+
+		for ( int CycleLeader = 1; CycleLeader < N - 1; CycleLeader++ )
+			{
+			var Index = MathUtils.RotateBitsRight ( CycleLeader, LogN );
+
+			while ( Index != CycleLeader && Index > CycleLeader )
+				Index = MathUtils.RotateBitsRight ( Index, LogN );
+
+			if ( Index != CycleLeader )
+				continue;
+
+			var Mem = elements[CycleLeader];
+			Index = CycleLeader;
+
+			do
+				{
+				Index = MathUtils.RotateBitsRight ( Index, LogN );
+
+				var NewVal = Mem;
+				Mem = elements[Index];
+				elements[Index] = NewVal;
+				}
+			while ( Index != CycleLeader );
+			}
+		}
 	}
 
