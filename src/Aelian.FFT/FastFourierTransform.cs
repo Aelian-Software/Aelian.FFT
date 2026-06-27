@@ -111,7 +111,7 @@ public static class FastFourierTransform
 	static readonly Vector256<long> _VecReverse256 = Vector256.Create ( new long[] { 3, 2, 1, 0 } );
 
 	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
-	private static Vector256<double> Reverse ( Vector256<double> vec )
+	private static Vector256<double> Reverse ( in Vector256<double> vec )
 		{
 		return Vector256.Shuffle ( vec, _VecReverse256 );
 		}
@@ -119,7 +119,7 @@ public static class FastFourierTransform
 	static readonly Vector512<long> _VecReverse512 = Vector512.Create ( new long[] { 7, 6, 5, 4, 3, 2, 1, 0 } );
 
 	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
-	private static Vector512<double> Reverse ( Vector512<double> vec )
+	private static Vector512<double> Reverse ( in Vector512<double> vec )
 		{
 		return Vector512.Shuffle ( vec, _VecReverse512 );
 		}
