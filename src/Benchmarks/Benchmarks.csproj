@@ -2,7 +2,10 @@
 
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
+		
 		<TargetFramework>net10.0</TargetFramework>
+		<LangVersion>14</LangVersion>
+		<Nullable>enable</Nullable>
 		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
 	</PropertyGroup>
 
@@ -12,13 +15,12 @@
 		<PackageReference Include="FftSharp" Version="2.2.0" />
 		<PackageReference Include="NAudio" Version="2.3.0" />
 		<PackageReference Include="MathNet.Numerics" Version="5.0.0" />
-		
 		<PackageReference Include="Accord" Version="3.8.0" />
 		<PackageReference Include="NWaves" Version="0.9.6" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\Aelian.FFT\Aelian.FFT.csproj" />
+		<ProjectReference Include="..\Aelian.FFT\Aelian.FFT.csproj" />
 	</ItemGroup>
 
 </Project>

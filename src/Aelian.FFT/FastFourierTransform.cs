@@ -38,9 +38,9 @@ namespace Aelian.FFT;
 
 public static class FastFourierTransform
 	{
-	private static double[][] _RealRootsOfUnity;
-	private static double[][] _ImagRootsOfUnity;
-	private static double[][] _ImagInverseRootsOfUnity; 
+	private static double[][]? _RealRootsOfUnity;
+	private static double[][]? _ImagRootsOfUnity;
+	private static double[][]? _ImagInverseRootsOfUnity; 
 	// _RealInverseRootsOfUnity is identical to _RealRootsOfUnity, so no need to store it separately
 
 	private const int _Vector128SizeShift = 1;
@@ -127,6 +127,8 @@ public static class FastFourierTransform
 		{
 		var n = buffer.Length;
 
+		ArgumentOutOfRangeException.ThrowIfLessThan ( n, 8, nameof ( buffer ) );
+
 		if ( !BitOperations.IsPow2 ( n ) )
 			throw new ArgumentException ( "Buffer size must be a power of 2", nameof ( buffer ) );
 
@@ -154,10 +156,15 @@ public static class FastFourierTransform
 	/// <exception cref="ArgumentException">Buffer length is not a power of 2 or buffer lenghts do not match.</exception>
 	public static void FFT ( Span<double> complexRealValues, Span<double> complexImagValues, bool forward, double normalizeFactor = 1.0 )
 		{
+		if ( _RealRootsOfUnity is null || _ImagRootsOfUnity is null || _ImagInverseRootsOfUnity is null )
+			throw new InvalidOperationException ( "FastFourierTransform.Initialize () has not yet been called" );
+
 		var n = complexRealValues.Length;
 
 		if ( n != complexImagValues.Length )
 			throw new ArgumentException ( "Imaginary and real buffer sizes must be the same", nameof ( complexImagValues ) );
+
+		ArgumentOutOfRangeException.ThrowIfLessThan ( n, 4, nameof ( complexRealValues ) );
 
 		if ( !BitOperations.IsPow2 ( n ) )
 			throw new ArgumentException ( "Buffer size must be a power of 2", nameof ( complexRealValues ) );
@@ -455,6 +462,9 @@ public static class FastFourierTransform
 	/// <exception cref="NotSupportedException">Buffer length is shorter than 16.</exception>
 	public static void RealFFT ( Span<double> complexRealValues, Span<double> complexImagValues, bool forward, double normalizeFactor = 1.0 )
 		{
+		if ( _RealRootsOfUnity is null || _ImagRootsOfUnity is null || _ImagInverseRootsOfUnity is null )
+			throw new InvalidOperationException ( "FastFourierTransform.Initialize () has not yet been called" );
+
 		var N = complexRealValues.Length;
 		var LogN = MathUtils.ILog2 ( N );
 		var HalfN = N >> 1;

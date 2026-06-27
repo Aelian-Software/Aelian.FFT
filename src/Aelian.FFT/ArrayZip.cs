@@ -39,8 +39,8 @@ namespace Aelian.FFT;
 
 internal static class ArrayZip
 	{
-	private static int[][][] _UnZipCycleDecompositions;
-	private static int[][][] _ZipCycleDecompositions;
+	private static int[][][]? _UnZipCycleDecompositions;
+	private static int[][][]? _ZipCycleDecompositions;
 
 	public static void CalculateUnZipCycleDecompositions ()
 		{
@@ -104,7 +104,13 @@ internal static class ArrayZip
 	/// <typeparam name="T">the array data type</typeparam>
 	/// <param name="elements">The array to unzip</param>
 	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
-	public static void UnZipInPlacePow2<T> ( Span<T> elements ) => PermuteInPlacePow2 ( elements, _UnZipCycleDecompositions );
+	public static void UnZipInPlacePow2<T> ( Span<T> elements )
+		{
+		if ( _UnZipCycleDecompositions is null )
+			throw new InvalidOperationException ( "CalculateUnZipCycleDecompositions has not yet been called" );
+
+		PermuteInPlacePow2 ( elements, _UnZipCycleDecompositions );
+		}
 
 	/// <summary>
 	/// This method is the inverse of UnZipInPlacePow2
@@ -112,7 +118,13 @@ internal static class ArrayZip
 	/// <typeparam name="T">the array data type</typeparam>
 	/// <param name="elements">The array to zip</param>
 	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
-	public static void ZipInPlacePow2<T> ( Span<T> elements ) => PermuteInPlacePow2 ( elements, _ZipCycleDecompositions );
+	public static void ZipInPlacePow2<T> ( Span<T> elements )
+		{
+		if ( _ZipCycleDecompositions is null )
+			throw new InvalidOperationException ( "CalculateUnZipCycleDecompositions has not yet been called" );
+
+		PermuteInPlacePow2 ( elements, _ZipCycleDecompositions );
+		}
 
 	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
 	private static void PermuteInPlacePow2<T> ( Span<T> elements, int[][][] cycleDecompositions )

@@ -30,16 +30,14 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Numerics;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 
 namespace Aelian.FFT;
 
 internal static class IndexReversal
 	{
-	private static int[][] _BitReverseIndices;
-	private static SwapPair[][] _BitReverseSwapIndices;
+	private static int[][]? _BitReverseIndices;
+	private static SwapPair[][]? _BitReverseSwapIndices;
 
 	private struct SwapPair
 		{
@@ -126,6 +124,9 @@ internal static class IndexReversal
 	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
 	public static void BitReverseArrayInPlace<T> ( Span<T> arrayA, Span<T> arrayB, int logArraySize )
 		{
+		if ( _BitReverseSwapIndices is null )
+			throw new InvalidOperationException ( "IndexReversal.CalculateBitReverseIndices () has not yet been called" );
+
 		var BitReverseSwaps = _BitReverseSwapIndices[logArraySize];
 
 		foreach ( var Swap in BitReverseSwaps )
