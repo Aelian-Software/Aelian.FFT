@@ -28,10 +28,8 @@
 // SOFTWARE.
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
@@ -63,23 +61,8 @@ internal static class ArrayZip
 
 			// We skip indices 0 and N-1 as they never change position
 
-			foreach ( var Cycle in GetCycleDecompositions ( 1, N - 2, a => MathUtils.RotateBitsRight ( a, i ) ) )
-				{
-				var IndicesInCycle = Cycle.ToArray ();
-
-				UnZipCycleDecompositions.Add ( IndicesInCycle.Length );
-				UnZipCycleDecompositions.Add ( IndicesInCycle[^1] );
-				UnZipCycleDecompositions.AddRange ( IndicesInCycle );
-				}
-
-			foreach ( var Cycle in GetCycleDecompositions ( 1, N - 2, a => MathUtils.RotateBitsLeft ( a, i ) ) )
-				{
-				var IndicesInCycle = Cycle.ToArray ();
-
-				ZipCycleDecompositions.Add ( IndicesInCycle.Length );
-				ZipCycleDecompositions.Add ( IndicesInCycle[^1] );
-				ZipCycleDecompositions.AddRange ( IndicesInCycle );
-				}
+			AddUnZipCycleDecompositions ( UnZipCycleDecompositions, N, i );
+			AddZipCycleDecompositions ( ZipCycleDecompositions, N, i );
 			}
 
 		UnZipCycleDecompositions[Constants.MaxTableDepth + 1] = UnZipCycleDecompositions.Count;
@@ -89,37 +72,70 @@ internal static class ArrayZip
 		_ZipCycleDecompositions = ZipCycleDecompositions.ToArray ();
 		}
 
-	private static IEnumerable<IEnumerable<int>> GetCycleDecompositions ( int start, int length, Func<int, int> getPermutedIndex )
+	private static void AddUnZipCycleDecompositions ( List<int> cycleDecompositions, int N, int bitCount )
 		{
-		var Touched = new BitArray ( length );
-
-		for ( int i = 0; i < length; i++ )
+		for ( int CycleLeader = 1; CycleLeader < N - 1; CycleLeader++ )
 			{
-			if ( Touched[i] )
-				continue; // Already in another cycle
+			var Index = MathUtils.RotateBitsRight ( CycleLeader, bitCount );
 
-			var IndicesInCycle = GetCycle ( i + start, getPermutedIndex );
+			while ( Index != CycleLeader && Index > CycleLeader )
+				Index = MathUtils.RotateBitsRight ( Index, bitCount );
 
-			yield return IndicesInCycle;
+			if ( Index != CycleLeader )
+				continue;
 
-			foreach ( var IndexInCycle in IndicesInCycle )
-				Touched.Set ( IndexInCycle - start, true );
+			var CycleHeaderIndex = cycleDecompositions.Count;
+			var CycleLength = 0;
+
+			cycleDecompositions.Add ( 0 );
+			cycleDecompositions.Add ( 0 );
+
+			Index = CycleLeader;
+
+			do
+				{
+				cycleDecompositions.Add ( Index );
+				CycleLength++;
+				Index = MathUtils.RotateBitsRight ( Index, bitCount );
+				}
+			while ( Index != CycleLeader );
+
+			cycleDecompositions[CycleHeaderIndex] = CycleLength;
+			cycleDecompositions[CycleHeaderIndex + 1] = cycleDecompositions[^1];
 			}
 		}
 
-	private static IEnumerable<int> GetCycleLeaders ( int start, int length, Func<int, int> getPermutedIndex ) =>
-		GetCycleDecompositions ( start, length, getPermutedIndex ).Select ( a => a.First () );
-
-	private static IEnumerable<int> GetCycle ( int startIndex, Func<int, int> getPermutedIndex )
+	private static void AddZipCycleDecompositions ( List<int> cycleDecompositions, int N, int bitCount )
 		{
-		var Index = startIndex;
-
-		do
+		for ( int CycleLeader = 1; CycleLeader < N - 1; CycleLeader++ )
 			{
-			yield return Index;
-			Index = getPermutedIndex ( Index );
+			var Index = MathUtils.RotateBitsLeft ( CycleLeader, bitCount );
+
+			while ( Index != CycleLeader && Index > CycleLeader )
+				Index = MathUtils.RotateBitsLeft ( Index, bitCount );
+
+			if ( Index != CycleLeader )
+				continue;
+
+			var CycleHeaderIndex = cycleDecompositions.Count;
+			var CycleLength = 0;
+
+			cycleDecompositions.Add ( 0 );
+			cycleDecompositions.Add ( 0 );
+
+			Index = CycleLeader;
+
+			do
+				{
+				cycleDecompositions.Add ( Index );
+				CycleLength++;
+				Index = MathUtils.RotateBitsLeft ( Index, bitCount );
+				}
+			while ( Index != CycleLeader );
+
+			cycleDecompositions[CycleHeaderIndex] = CycleLength;
+			cycleDecompositions[CycleHeaderIndex + 1] = cycleDecompositions[^1];
 			}
-		while ( Index != startIndex );
 		}
 
 	/// <summary>
