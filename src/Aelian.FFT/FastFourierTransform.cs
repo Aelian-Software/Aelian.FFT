@@ -38,9 +38,9 @@ namespace Aelian.FFT;
 
 public static class FastFourierTransform
 	{
-	private static double[][]? _RealRootsOfUnity;
-	private static double[][]? _ImagRootsOfUnity;
-	private static double[][]? _ImagInverseRootsOfUnity; 
+	private static AlignedMemory<double>[]? _RealRootsOfUnity;
+	private static AlignedMemory<double>[]? _ImagRootsOfUnity;
+	private static AlignedMemory<double>[]? _ImagInverseRootsOfUnity; 
 	// _RealInverseRootsOfUnity is identical to _RealRootsOfUnity, so no need to store it separately
 
 	private const int _Vector128SizeShift = 1;
@@ -65,16 +65,25 @@ public static class FastFourierTransform
 
 	private static void CalculateRootsOfUnity ()
 		{
-		_RealRootsOfUnity = new double[Constants.MaxTableDepth][];
-		_ImagRootsOfUnity = new double[Constants.MaxTableDepth][];
-		_ImagInverseRootsOfUnity = new double[Constants.MaxTableDepth][];
+		_RealRootsOfUnity = new AlignedMemory<double>[Constants.MaxTableDepth];
+		_ImagRootsOfUnity = new AlignedMemory<double>[Constants.MaxTableDepth];
+		_ImagInverseRootsOfUnity = new AlignedMemory<double>[Constants.MaxTableDepth];
 
 		for ( int i = 0; i < Constants.MaxTableDepth; i++ )
 			{
 			var N = 1 << i;
-			_RealRootsOfUnity[i] = new double[N];
-			_ImagRootsOfUnity[i] = new double[N];
-			_ImagInverseRootsOfUnity[i] = new double[N];
+
+			var RealRootsOfUnity = AlignedMemory<double>.Allocate ( N );
+			var ImagRootsOfUnity = AlignedMemory<double>.Allocate ( N );
+			var ImagInverseRootsOfUnity = AlignedMemory<double>.Allocate ( N );
+
+			_RealRootsOfUnity[i] = RealRootsOfUnity;
+			_ImagRootsOfUnity[i] = ImagRootsOfUnity;
+			_ImagInverseRootsOfUnity[i] = ImagInverseRootsOfUnity;
+
+			var RealRootsOfUnitySpan = RealRootsOfUnity.AsSpan ();
+			var ImagRootsOfUnitySpan = ImagRootsOfUnity.AsSpan ();
+			var ImagInverseRootsOfUnitySpan = ImagInverseRootsOfUnity.AsSpan ();
 
 			// Calculate Nth roots of unity:
 
@@ -92,9 +101,9 @@ public static class FastFourierTransform
 				// var InverseRootsOfUnity = 1.0 / RootsOfUnity;
 
 				// Split into real/imaginary arrays
-				_RealRootsOfUnity[i][k] = RootsOfUnity.Real;
-				_ImagRootsOfUnity[i][k] = RootsOfUnity.Imaginary;
-				_ImagInverseRootsOfUnity[i][k] = -RootsOfUnity.Imaginary;
+				RealRootsOfUnitySpan[k] = RootsOfUnity.Real;
+				ImagRootsOfUnitySpan[k] = RootsOfUnity.Imaginary;
+				ImagInverseRootsOfUnitySpan[k] = -RootsOfUnity.Imaginary;
 				}
 			}
 		}
