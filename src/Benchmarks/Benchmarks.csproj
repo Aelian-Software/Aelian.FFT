@@ -17,6 +17,7 @@
 		<PackageReference Include="MathNet.Numerics" Version="5.0.0" />
 		<PackageReference Include="Accord" Version="3.8.0" />
 		<PackageReference Include="NWaves" Version="0.9.6" />
+		<PackageReference Include="FftFlat" Version="1.0.1" />
 	</ItemGroup>
 
 	<ItemGroup>

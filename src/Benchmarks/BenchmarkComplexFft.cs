@@ -29,6 +29,7 @@ namespace Benchmarks
 
 		private NWaves.Transforms.Fft64? _NWavesFft64;
 		private Lomont.LomontFFT _Lomont = new () { A = 1, B = -1 };
+		private FftFlat.FastFourierTransform? _FftFlat;
 
 		private double[]? _InRe;
 		private double[]? _InIm;
@@ -73,6 +74,7 @@ namespace Benchmarks
 			// Initialize other implementations
 
 			_NWavesFft64 = new NWaves.Transforms.Fft64 ( N );
+			_FftFlat = new FftFlat.FastFourierTransform ( N );
 
 			_InRe = new double[_IterationData.ComplexLength];
 			_InIm = new double[_IterationData.ComplexLength];
@@ -253,6 +255,28 @@ namespace Benchmarks
 
 			for ( int i = 0; i < RunCount; i++ )
 				NAudio.Dsp.FastFourierTransform.FFT ( false, M, _NAudioBuffer );
+			}
+
+		/*--------------------------------------------------------------\
+		| FftFlat                                                      |
+		\* ------------------------------------------------------------*/
+
+		[Benchmark]
+		public void FftFlat_RealFFT ()
+			{
+			var ComplexSpan = _ComplexBuffer.AsSpan ();
+
+			for ( int i = 0; i < RunCount; i++ )
+				_FftFlat!.Forward ( ComplexSpan );
+			}
+
+		[Benchmark]
+		public void FftFlat_RealFFT_Inverse ()
+			{
+			var ComplexSpan = _ComplexBuffer.AsSpan ();
+
+			for ( int i = 0; i < RunCount; i++ )
+				_FftFlat!.Inverse ( ComplexSpan );
 			}
 
 		/*--------------------------------------------------------------\

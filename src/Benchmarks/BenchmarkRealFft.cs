@@ -29,6 +29,7 @@ namespace Benchmarks
 
 		private NWaves.Transforms.RealFft64? _NWavesRealFft64;
 		private Lomont.LomontFFT _Lomont = new () { A = 1, B = -1 };
+		private FftFlat.RealFourierTransform? _FftFlatReal;
 
 		private double[]? _IterationDataArray;
 		private double[]? _OutSamples;
@@ -70,6 +71,7 @@ namespace Benchmarks
 			// Initialize other implementations
 
 			_NWavesRealFft64 = new ( _IterationData.ComplexLength );
+			_FftFlatReal = new FftFlat.RealFourierTransform ( _IterationData.RealLength );
 
 			_IterationDataArray = new double[_IterationData.RealLength];
 			_OutSamples = new double[_IterationData.RealLength];
@@ -77,8 +79,9 @@ namespace Benchmarks
 			_InIm = new double[_IterationData.ComplexLength];
 			_OutRe = new double[_IterationData.ComplexLength];
 			_OutIm = new double[_IterationData.ComplexLength];
-			_InComplex = new Complex[_IterationData.ComplexLength + 1]; // FftSharp demands spectrum size be a power of 2 + 1
+			_InComplex = new Complex[_IterationData.ComplexLength + 1]; // FftSharp and FFtFlat demand spectrum size be a power of 2 + 1
 			_MathNetBuffer = new float[_IterationData.RealLength + 2]; // MathNet demands that buffer size be N+2
+			_IterationDataArrayPlus2 = new double[_IterationData.RealLength + 2]; // FFtFlat demands that buffer size be N+2
 			}
 
 		/// <summary>
@@ -264,6 +267,28 @@ namespace Benchmarks
 			{
 			for ( int i = 0; i < RunCount; i++ )
 				_Lomont.RealFFT ( _IterationDataArray!, false );
+			}
+
+		/*--------------------------------------------------------------\
+		| FftFlat                                                      |
+		\* ------------------------------------------------------------*/
+
+		[Benchmark]
+		public void FftFlat_RealFFT ()
+			{
+			var RealSpan = _IterationDataArrayPlus2!.AsSpan ();
+
+			for ( int i = 0; i < RunCount; i++ )
+				_FftFlatReal!.Forward ( RealSpan );
+			}
+
+		[Benchmark]
+		public void FftFlat_RealFFT_Inverse ()
+			{
+			var ComplexSpan = _InComplex.AsSpan ();
+
+			for ( int i = 0; i < RunCount; i++ )
+				_FftFlatReal!.Inverse ( ComplexSpan );
 			}
 
 		/*--------------------------------------------------------------\
