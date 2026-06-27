@@ -40,7 +40,7 @@ internal static class MathUtils
 	/// <param name="number">The number to get the binary logarithm of.</param>
 	/// <returns>The binary logarithm of the specified number.</returns>
 	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
-	public static int ILog2 ( int number ) => BitOperations.TrailingZeroCount ( (nuint) number );
+	public static int ILog2 ( int number ) => BitOperations.Log2 ( (nuint) number );
 
 	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
 	public static int RotateBitsRight ( int number, int bitSize )

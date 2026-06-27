@@ -39,28 +39,52 @@ namespace Aelian.FFT;
 
 internal static class ArrayZip
 	{
-	private static int[][][]? _UnZipCycleDecompositions;
-	private static int[][][]? _ZipCycleDecompositions;
+	private static int[]? _UnZipCycleDecompositions;
+	private static int[]? _ZipCycleDecompositions;
 
 	public static void CalculateUnZipCycleDecompositions ()
 		{
-		_UnZipCycleDecompositions = new int[Constants.MaxTableDepth + 1][][];
-		_ZipCycleDecompositions = new int[Constants.MaxTableDepth + 1][][];
+		var HeaderLength = Constants.MaxTableDepth + 2;
+		var UnZipCycleDecompositions = new List<int> ( HeaderLength );
+		var ZipCycleDecompositions = new List<int> ( HeaderLength );
+
+		for ( int i = 0; i < HeaderLength; i++ )
+			{
+			UnZipCycleDecompositions.Add ( HeaderLength );
+			ZipCycleDecompositions.Add ( HeaderLength );
+			}
 
 		for ( int i = 2; i < Constants.MaxTableDepth + 1; i++ ) // Skip 1 and 2 sized arrays
 			{
 			var N = 1 << i;
 
+			UnZipCycleDecompositions[i] = UnZipCycleDecompositions.Count;
+			ZipCycleDecompositions[i] = ZipCycleDecompositions.Count;
+
 			// We skip indices 0 and N-1 as they never change position
 
-			_UnZipCycleDecompositions[i] = GetCycleDecompositions ( 1, N - 2, a => MathUtils.RotateBitsRight ( a, i ) )
-				.Select ( a => a.ToArray () )
-				.ToArray ();
+			foreach ( var Cycle in GetCycleDecompositions ( 1, N - 2, a => MathUtils.RotateBitsRight ( a, i ) ) )
+				{
+				var IndicesInCycle = Cycle.ToArray ();
 
-			_ZipCycleDecompositions[i] = GetCycleDecompositions ( 1, N - 2, a => MathUtils.RotateBitsLeft ( a, i ) )
-				.Select ( a => a.ToArray () )
-				.ToArray ();
+				UnZipCycleDecompositions.Add ( IndicesInCycle.Length );
+				UnZipCycleDecompositions.AddRange ( IndicesInCycle );
+				}
+
+			foreach ( var Cycle in GetCycleDecompositions ( 1, N - 2, a => MathUtils.RotateBitsLeft ( a, i ) ) )
+				{
+				var IndicesInCycle = Cycle.ToArray ();
+
+				ZipCycleDecompositions.Add ( IndicesInCycle.Length );
+				ZipCycleDecompositions.AddRange ( IndicesInCycle );
+				}
 			}
+
+		UnZipCycleDecompositions[Constants.MaxTableDepth + 1] = UnZipCycleDecompositions.Count;
+		ZipCycleDecompositions[Constants.MaxTableDepth + 1] = ZipCycleDecompositions.Count;
+
+		_UnZipCycleDecompositions = UnZipCycleDecompositions.ToArray ();
+		_ZipCycleDecompositions = ZipCycleDecompositions.ToArray ();
 		}
 
 	private static IEnumerable<IEnumerable<int>> GetCycleDecompositions ( int start, int length, Func<int, int> getPermutedIndex )
@@ -127,27 +151,31 @@ internal static class ArrayZip
 		}
 
 	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
-	private static void PermuteInPlacePow2<T> ( Span<T> elements, int[][][] cycleDecompositions )
+	private static void PermuteInPlacePow2<T> ( Span<T> elements, int[] cycleDecompositions )
 		{
 		var N = elements.Length;
 		var LogN = MathUtils.ILog2 ( N );
 
 		Debug.Assert ( BitOperations.IsPow2 ( N ) );
 
-		var CycleDecompositions = cycleDecompositions[LogN];
+		var CycleDecompositionIndex = cycleDecompositions[LogN];
+		var EndCycleDecompositionIndex = cycleDecompositions[LogN + 1];
 
-		foreach ( var UnZipCycles in CycleDecompositions )
+		while ( CycleDecompositionIndex < EndCycleDecompositionIndex )
 			{
-			var Index = UnZipCycles[^1];
+			var CycleLength = cycleDecompositions[CycleDecompositionIndex++];
+			var Index = cycleDecompositions[CycleDecompositionIndex + CycleLength - 1];
 			var Mem = elements[Index];
 
-			for ( int i = 0; i < UnZipCycles.Length; i++ )
+			for ( int i = 0; i < CycleLength; i++ )
 				{
 				var NewVal = Mem;
-				Index = UnZipCycles[i];
+				Index = cycleDecompositions[CycleDecompositionIndex + i];
 				Mem = elements[Index];
 				elements[Index] = NewVal;
 				}
+
+			CycleDecompositionIndex += CycleLength;
 			}
 		}
 	}
