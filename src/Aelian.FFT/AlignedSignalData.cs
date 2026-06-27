@@ -31,118 +31,118 @@ using System;
 using System.Numerics;
 using System.Runtime.InteropServices;
 
-namespace Aelian.FFT
+namespace Aelian.FFT;
+
+/// <summary>
+/// Helper class for allocating and accessing data that can change from real-valued to 
+/// complex-valued and vice versa, to support working with in-place FFT algorithms.
+/// The data is guaranteed to be aligned to a memory boundary of 64 bytes for optimal
+/// SIMD performance.
+/// </summary>
+/// <remarks>
+/// You always need to dispose instances of this class after use or it will leak memory!
+/// </remarks>
+public unsafe class AlignedSignalData : Disposable<AlignedSignalData>
 	{
+	private const nuint _MemoryAlignmentBoundaryBytes = 64;
+	private void* _DataPointer;
+	private int _DoubleLength;
+
 	/// <summary>
-	/// Helper class for allocating and accessing data that can change from real-valued to 
-	/// complex-valued and vice versa, to support working with in-place FFT algorithms.
-	/// The data is guaranteed to be aligned to a memory boundary of 64 bytes for optimal
-	/// SIMD performance.
+	/// The length of the data in real-valued samples
 	/// </summary>
-	/// <remarks>
-	/// You always need to dispose instances of this class after use or it will leak memory!
-	/// </remarks>
-	public unsafe class AlignedSignalData : Disposable<AlignedSignalData>
+	public int RealLength => _DoubleLength;
+
+	/// <summary>
+	/// The length of the data in complex values
+	/// </summary>
+	public int ComplexLength => _DoubleLength >> 1;
+
+	/// <summary>
+	/// The length of the data in bytes
+	/// </summary>
+	public int ByteLength => _DoubleLength * sizeof ( double );
+
+	private AlignedSignalData ( int doubleLength )
 		{
-		private const nuint _MemoryAlignmentBoundaryBytes = 64;
-		private void* _DataPointer;
-		private int _DoubleLength;
+		_DoubleLength = doubleLength;
 
-		/// <summary>
-		/// The length of the data in real-valued samples
-		/// </summary>
-		public int RealLength => _DoubleLength;
+		var ByteLength = sizeof ( double ) * _DoubleLength;
+		_DataPointer = NativeMemory.AlignedAlloc ( (nuint) ByteLength, _MemoryAlignmentBoundaryBytes );
+		}
 
-		/// <summary>
-		/// The length of the data in complex values
-		/// </summary>
-		public int ComplexLength => _DoubleLength >> 1;
+	/// <summary>
+	/// Create a AlignedSignalData instance that can fit a specified number of real-valued samples.
+	/// </summary>
+	/// <param name="realSize">The number of real-valued samples the AlignedSignalData instance should be able to fit.</param>
+	/// <returns></returns>
+	public static AlignedSignalData AllocateFromRealSize ( int realSize ) => new AlignedSignalData ( realSize );
 
-		/// <summary>
-		/// The length of the data in bytes
-		/// </summary>
-		public int ByteLength => _DoubleLength * sizeof ( double );
+	/// <summary>
+	/// Create a AlignedSignalData instance that can fit a specified number of complex values.
+	/// </summary>
+	/// <param name="complexSize">The number of complex values the AlignedSignalData instance should be able to fit.</param>
+	/// <returns></returns>
+	public static AlignedSignalData AllocateFromComplexSize ( int complexSize ) => new AlignedSignalData ( complexSize << 1 );
 
-		private AlignedSignalData ( int doubleLength )
-			{
-			_DoubleLength = doubleLength;
+	/// <summary>
+	/// Get a Span pointing to the raw signal data bytes
+	/// </summary>
+	/// <returns>A Span pointing to the raw signal data bytes.</returns>
+	public Span<byte> AsRawData () => new Span<byte> ( _DataPointer, ByteLength );
 
-			var ByteLength = sizeof ( double ) * _DoubleLength;
-			_DataPointer = NativeMemory.AlignedAlloc ( (nuint) ByteLength, _MemoryAlignmentBoundaryBytes );
-			}
+	/// <summary>
+	/// Get a Span pointing to the signal data, interpreted as real-valued samples.
+	/// </summary>
+	/// <returns>A Span pointing to the signal data, interpreted as real-valued samples.</returns>
+	public Span<double> AsReal () => new Span<double> ( _DataPointer, RealLength );
 
-		/// <summary>
-		/// Create a AlignedSignalData instance that can fit a specified number of real-valued samples.
-		/// </summary>
-		/// <param name="realSize">The number of real-valued samples the AlignedSignalData instance should be able to fit.</param>
-		/// <returns></returns>
-		public static AlignedSignalData AllocateFromRealSize ( int realSize ) => new AlignedSignalData ( realSize );
+	/// <summary>
+	/// Get a Span pointing to the signal data, interpreted as complex values.
+	/// </summary>
+	/// <returns>A Span pointing to the signal data, interpreted as complex values.</returns>
+	public Span<Complex> AsComplex () => new Span<Complex> ( _DataPointer, ComplexLength );
 
-		/// <summary>
-		/// Create a AlignedSignalData instance that can fit a specified number of complex values.
-		/// </summary>
-		/// <param name="complexSize">The number of complex values the AlignedSignalData instance should be able to fit.</param>
-		/// <returns></returns>
-		public static AlignedSignalData AllocateFromComplexSize ( int complexSize ) => new AlignedSignalData ( complexSize << 1 );
+	/// <summary>
+	/// Copy the signal data to an array of real-valued samples.
+	/// </summary>
+	/// <returns>An array of real-valued samples.</returns>
+	public double[] ToRealArray () => AsReal ().ToArray ();
 
-		/// <summary>
-		/// Get a Span pointing to the raw signal data bytes
-		/// </summary>
-		/// <returns>A Span pointing to the raw signal data bytes.</returns>
-		public Span<byte> AsRawData () => new Span<byte> ( _DataPointer, ByteLength );
+	/// <summary>
+	/// Copy the signal data to an array of complex values.
+	/// </summary>
+	/// <returns>An array of complex values.</returns>
+	public Complex[] ToComplexArray () => AsComplex ().ToArray ();
 
-		/// <summary>
-		/// Get a Span pointing to the signal data, interpreted as real-valued samples.
-		/// </summary>
-		/// <returns>A Span pointing to the signal data, interpreted as real-valued samples.</returns>
-		public Span<double> AsReal () => new Span<double> ( _DataPointer, RealLength );
+	/// <summary>
+	/// Make an exact clone of this instance of AlignedSignalData.
+	/// </summary>
+	/// <returns>An exact clone of this instance of AlignedSignalData.</returns>
+	public AlignedSignalData Clone ()
+		{
+		var Out = new AlignedSignalData ( _DoubleLength );
+		CopyTo ( Out );
+		return Out;
+		}
 
-		/// <summary>
-		/// Get a Span pointing to the signal data, interpreted as complex values.
-		/// </summary>
-		/// <returns>A Span pointing to the signal data, interpreted as complex values.</returns>
-		public Span<Complex> AsComplex () => new Span<Complex> ( _DataPointer, ComplexLength );
+	/// <summary>
+	/// Copy the data in this AlignedSignalData instance to another instance of AlignedSignalData. This method will overwrite the signal data in the destination instance.
+	/// </summary>
+	/// <param name="destination">The destination AlignedSignalData instance.</param>
+	/// <exception cref="ArgumentException">The signal data lengths do not match.</exception>
+	public void CopyTo ( AlignedSignalData destination )
+		{
+		if ( destination.ByteLength != ByteLength )
+			throw new ArgumentException ( "Source and destination length must be equal", nameof ( destination ) );
 
-		/// <summary>
-		/// Copy the signal data to an array of real-valued samples.
-		/// </summary>
-		/// <returns>An array of real-valued samples.</returns>
-		public double[] ToRealArray () => AsReal ().ToArray ();
+		AsRawData ().CopyTo ( destination.AsRawData () );
+		}
 
-		/// <summary>
-		/// Copy the signal data to an array of complex values.
-		/// </summary>
-		/// <returns>An array of complex values.</returns>
-		public Complex[] ToComplexArray () => AsComplex ().ToArray ();
-
-		/// <summary>
-		/// Make an exact clone of this instance of AlignedSignalData.
-		/// </summary>
-		/// <returns>An exact clone of this instance of AlignedSignalData.</returns>
-		public AlignedSignalData Clone ()
-			{
-			var Out = new AlignedSignalData ( _DoubleLength );
-			CopyTo ( Out );
-			return Out;
-			}
-
-		/// <summary>
-		/// Copy the data in this AlignedSignalData instance to another instance of AlignedSignalData. This method will overwrite the signal data in the destination instance.
-		/// </summary>
-		/// <param name="destination">The destination AlignedSignalData instance.</param>
-		/// <exception cref="ArgumentException">The signal data lengths do not match.</exception>
-		public void CopyTo ( AlignedSignalData destination )
-			{
-			if ( destination.ByteLength != ByteLength )
-				throw new ArgumentException ( "Source and destination length must be equal", nameof ( destination ) );
-
-			AsRawData ().CopyTo ( destination.AsRawData () );
-			}
-
-		protected override void FreeUnmanagedResources ()
-			{
-			NativeMemory.AlignedFree ( _DataPointer );
-			_DataPointer = null;
-			}
+	protected override void FreeUnmanagedResources ()
+		{
+		NativeMemory.AlignedFree ( _DataPointer );
+		_DataPointer = null;
 		}
 	}
+

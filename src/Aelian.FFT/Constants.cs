@@ -27,14 +27,14 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-namespace Aelian.FFT
+namespace Aelian.FFT;
+
+internal static class Constants
 	{
-	internal static class Constants
-		{
-		/// <summary>
-		/// Determines the size of the precalculated tables and the the maximum FFT size. 
-		/// The maximum FFT size is 2^(MaxTableDepth-2) real-valued samples or 2^(MaxTableDepth-3) complex values.
-		/// </summary>
-		public const int MaxTableDepth = 18;
-		}
+	/// <summary>
+	/// Determines the size of the precalculated tables and the the maximum FFT size. 
+	/// The maximum FFT size is 2^(MaxTableDepth-2) real-valued samples or 2^(MaxTableDepth-3) complex values.
+	/// </summary>
+	public const int MaxTableDepth = 18;
 	}
+

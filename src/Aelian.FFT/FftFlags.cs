@@ -29,13 +29,13 @@
 
 using System;
 
-namespace Aelian.FFT
+namespace Aelian.FFT;
+
+[Flags]
+public enum FftFlags
 	{
-	[Flags]
-	public enum FftFlags
-		{
-		None = 0,
-		DoNotRezip = 1,
-		DoNotNormalize = 2
-		}
+	None = 0,
+	DoNotRezip = 1,
+	DoNotNormalize = 2
 	}
+

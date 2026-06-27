@@ -29,55 +29,55 @@
 
 using System;
 
-namespace Aelian.FFT
+namespace Aelian.FFT;
+
+/// <summary>
+/// Base class for disposable classes
+/// </summary>
+/// <typeparam name="T">The class that needs to be disposable</typeparam>
+public abstract class Disposable<T> : IDisposable
+	where T : Disposable<T>
 	{
-	/// <summary>
-	/// Base class for disposable classes
-	/// </summary>
-	/// <typeparam name="T">The class that needs to be disposable</typeparam>
-	public abstract class Disposable<T> : IDisposable
-		where T : Disposable<T>
+	public bool IsDisposed { get; private set; }
+
+	protected virtual void Dispose ( bool disposing )
 		{
-		public bool IsDisposed { get; private set; }
-
-		protected virtual void Dispose ( bool disposing )
+		if ( !IsDisposed )
 			{
-			if ( !IsDisposed )
-				{
-				if ( disposing )
-					DisposeManagedState ();
+			if ( disposing )
+				DisposeManagedState ();
 
-				FreeUnmanagedResources ();
-				NullLargeFields ();
+			FreeUnmanagedResources ();
+			NullLargeFields ();
 
-				IsDisposed = true;
-				}
-			}
-
-		/// <summary>
-		/// Dispose managed state (managed objects)
-		/// </summary>
-		protected virtual void DisposeManagedState () { }
-
-		/// <summary>
-		/// Free unmanaged resources (unmanaged objects)
-		/// </summary>
-		protected virtual void FreeUnmanagedResources () { }
-
-		/// <summary>
-		/// Set large fields to null
-		/// </summary>
-		protected virtual void NullLargeFields () { }
-
-		~Disposable ()
-			{
-			Dispose ( disposing: false );
-			}
-
-		public void Dispose ()
-			{
-			Dispose ( disposing: true );
-			GC.SuppressFinalize ( this );
+			IsDisposed = true;
 			}
 		}
+
+	/// <summary>
+	/// Dispose managed state (managed objects)
+	/// </summary>
+	protected virtual void DisposeManagedState () { }
+
+	/// <summary>
+	/// Free unmanaged resources (unmanaged objects)
+	/// </summary>
+	protected virtual void FreeUnmanagedResources () { }
+
+	/// <summary>
+	/// Set large fields to null
+	/// </summary>
+	protected virtual void NullLargeFields () { }
+
+	~Disposable ()
+		{
+		Dispose ( disposing: false );
+		}
+
+	public void Dispose ()
+		{
+		Dispose ( disposing: true );
+		GC.SuppressFinalize ( this );
+		}
 	}
+
