@@ -28,6 +28,7 @@
 // SOFTWARE.
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
@@ -49,6 +50,8 @@ internal static class ScratchArrayZip
 	private static readonly Vector512<long> _SecondHalfIndices =
 		Vector512.Create ( 4L, 12L, 5L, 13L, 6L, 14L, 7L, 15L );
 
+
+	[MethodImpl ( MethodImplOptions.AggressiveInlining /*| MethodImplOptions.AggressiveOptimization*/ )]
 	public static unsafe void UnZipToScratches 
 		(
 		ReadOnlySpan<double> elements,
@@ -119,6 +122,7 @@ internal static class ScratchArrayZip
 			}
 		}
 
+	[MethodImpl ( MethodImplOptions.AggressiveInlining /*| MethodImplOptions.AggressiveOptimization*/ )]
 	public static unsafe void ZipFromScratches 
 		(
 		Span<double> elements,

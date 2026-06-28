@@ -27,6 +27,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#define USE_SCRATCHES
+
 using System;
 using System.Diagnostics;
 using System.Numerics;
@@ -110,7 +112,7 @@ public static class FastFourierTransform
 
 	static readonly Vector256<long> _VecReverse256 = Vector256.Create ( new long[] { 3, 2, 1, 0 } );
 
-	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
+	[MethodImpl ( MethodImplOptions.AggressiveInlining /*| MethodImplOptions.AggressiveOptimization*/ )]
 	private static Vector256<double> Reverse ( in Vector256<double> vec )
 		{
 		return Vector256.Shuffle ( vec, _VecReverse256 );
@@ -118,7 +120,7 @@ public static class FastFourierTransform
 
 	static readonly Vector512<long> _VecReverse512 = Vector512.Create ( new long[] { 7, 6, 5, 4, 3, 2, 1, 0 } );
 
-	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
+	[MethodImpl ( MethodImplOptions.AggressiveInlining /*| MethodImplOptions.AggressiveOptimization*/ )]
 	private static Vector512<double> Reverse ( in Vector512<double> vec )
 		{
 		return Vector512.Shuffle ( vec, _VecReverse512 );
@@ -133,24 +135,38 @@ public static class FastFourierTransform
 	/// <exception cref="ArgumentException">Buffer length is not a power of 2</exception>
 	public static void FFT ( Span<Complex> buffer, bool forward )
 		{
-		var n = buffer.Length;
+		var N = buffer.Length;
 
-		ArgumentOutOfRangeException.ThrowIfLessThan ( n, 8, nameof ( buffer ) );
+		ArgumentOutOfRangeException.ThrowIfLessThan ( N, 8, nameof ( buffer ) );
 
-		if ( !BitOperations.IsPow2 ( n ) )
+		if ( !BitOperations.IsPow2 ( N ) )
 			throw new ArgumentException ( "Buffer size must be a power of 2", nameof ( buffer ) );
 
 		var UnZippedBuffer = MemoryMarshal.Cast<Complex, double> ( buffer );
 
+#if USE_SCRATCHES
+		using var ScratchA = AlignedMemoryPool<double>.Rent ( N );
+		using var ScratchB = AlignedMemoryPool<double>.Rent ( N );
+
+		var RealValues = ScratchA.Memory.AsSpan ().Slice ( 0, N );
+		var ImagValues = ScratchB.Memory.AsSpan ().Slice ( 0, N );
+
+		ScratchArrayZip.UnZipToScratches ( UnZippedBuffer, RealValues, ImagValues ); // Unzip
+#else
 		ArrayZip.UnZipInPlacePow2 ( UnZippedBuffer ); // Unzip
 
 		var RealValues = UnZippedBuffer.Slice ( 0, n );
 		var ImagValues = UnZippedBuffer.Slice ( n, n );
+#endif
 
 		FFT ( RealValues, ImagValues, forward );
 
+#if USE_SCRATCHES
+		ScratchArrayZip.ZipFromScratches ( UnZippedBuffer, RealValues, ImagValues ); // Re-zip
+#else
 		ArrayZip.ZipInPlacePow2 ( UnZippedBuffer ); // Re-zip
-		}		
+#endif
+		}
 
 	/// <summary>
 	/// Compute the forward or inverse Fourier Transform of complex-valued data.
@@ -494,8 +510,8 @@ public static class FastFourierTransform
 	public static void RealFFT ( Span<Complex> buffer, bool forward, FftFlags flags = FftFlags.None )
 		=> RealFFT ( MemoryMarshal.Cast<Complex, double> ( buffer ), forward, flags );
 
-	private static readonly AlignedMemory<double> _DebugScratchA = AlignedMemory<double>.Allocate ( 1024 * 16 );
-	private static readonly AlignedMemory<double> _DebugScratchB = AlignedMemory<double>.Allocate ( 1024 * 16 );
+	//private static readonly AlignedMemory<double> _DebugScratchA = AlignedMemory<double>.Allocate ( 1024 * 16 );
+	//private static readonly AlignedMemory<double> _DebugScratchB = AlignedMemory<double>.Allocate ( 1024 * 16 );
 
 	/// <summary>
 	/// Compute the forward or inverse Fourier Transform of real-valued data.
@@ -516,24 +532,27 @@ public static class FastFourierTransform
 		{
 		var N = buffer.Length >> 1;
 
-#if true
-		var RealValues = _DebugScratchA.AsSpan ().Slice ( 0, N );
-		var ImagValues = _DebugScratchB.AsSpan ().Slice ( 0, N );
-		ScratchArrayZip.UnZipToScratches ( buffer, RealValues, ImagValues );
+#if USE_SCRATCHES
+		using var ScratchA = AlignedMemoryPool<double>.Rent ( N );
+		using var ScratchB = AlignedMemoryPool<double>.Rent ( N );
 
-		var NormalizeFactor = ( flags & FftFlags.DoNotNormalize ) != 0 ? ( N * 2.0 ) : 1.0; // TODO: This is wonky, we should be able to skip normalization alltogether. More research needed.
-		RealFFT ( RealValues, ImagValues, forward, NormalizeFactor );
+		var RealValues = ScratchA.Memory.AsSpan ().Slice ( 0, N );
+		var ImagValues = ScratchB.Memory.AsSpan ().Slice ( 0, N );
 
-		ScratchArrayZip.ZipFromScratches ( buffer, RealValues, ImagValues );
+		ScratchArrayZip.UnZipToScratches ( buffer, RealValues, ImagValues ); // Unzip
 #else
 		ArrayZip.UnZipInPlacePow2 ( buffer ); // Unzip
 
 		var RealValues = buffer.Slice ( 0, N );
 		var ImagValues = buffer.Slice ( N, N );
+#endif
 
 		var NormalizeFactor = ( flags & FftFlags.DoNotNormalize ) != 0 ? ( N * 2.0 ) : 1.0; // TODO: This is wonky, we should be able to skip normalization alltogether. More research needed.
 		RealFFT ( RealValues, ImagValues, forward, NormalizeFactor );
 
+#if USE_SCRATCHES
+		ScratchArrayZip.ZipFromScratches ( buffer, RealValues, ImagValues ); // Re-zip
+#else
 		ArrayZip.ZipInPlacePow2 ( buffer ); // Re-zip
 #endif
 		}

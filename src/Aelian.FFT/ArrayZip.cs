@@ -119,7 +119,7 @@ internal static class ArrayZip
 	/// </summary>
 	/// <typeparam name="T">the array data type</typeparam>
 	/// <param name="elements">The array to unzip</param>
-	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
+	[MethodImpl ( MethodImplOptions.AggressiveInlining /*| MethodImplOptions.AggressiveOptimization*/ )]
 	public static void UnZipInPlacePow2<T> ( Span<T> elements )
 		{
 		if ( _UnZipCycleDecompositions is null )
@@ -133,7 +133,7 @@ internal static class ArrayZip
 	/// </summary>
 	/// <typeparam name="T">the array data type</typeparam>
 	/// <param name="elements">The array to zip</param>
-	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
+	[MethodImpl ( MethodImplOptions.AggressiveInlining /*| MethodImplOptions.AggressiveOptimization*/ )]
 	public static void ZipInPlacePow2<T> ( Span<T> elements )
 		{
 		if ( _ZipCycleDecompositions is null )
@@ -142,7 +142,7 @@ internal static class ArrayZip
 		PermuteInPlacePow2 ( elements, _ZipCycleDecompositions );
 		}
 
-	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
+	[MethodImpl ( MethodImplOptions.AggressiveInlining /*| MethodImplOptions.AggressiveOptimization*/ )]
 	private static unsafe void PermuteInPlacePow2<T> ( Span<T> elements, int[] cycleDecompositions )
 		{
 		var N = elements.Length;
@@ -173,7 +173,7 @@ internal static class ArrayZip
 		}
 
 	// Slow. Do not use! Only here for reference & testing.
-	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
+	[MethodImpl ( MethodImplOptions.AggressiveInlining /*| MethodImplOptions.AggressiveOptimization*/ )]
 	public static void ZipInPlacePow2NoLut<T> ( Span<T> elements )
 		{
 		var N = elements.Length;
@@ -205,7 +205,7 @@ internal static class ArrayZip
 		}
 
 	// Slow. Do not use! Only here for reference & testing.
-	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
+	[MethodImpl ( MethodImplOptions.AggressiveInlining /*| MethodImplOptions.AggressiveOptimization*/ )]
 	public static void UnZipInPlacePow2NoLut<T> ( Span<T> elements )
 		{
 		var N = elements.Length;

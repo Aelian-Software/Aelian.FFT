@@ -110,7 +110,7 @@ internal static class IndexReversal
 	/// <param name="arrayA">The first array</param>
 	/// <param name="arrayB">The second array</param>
 	/// <param name="logArraySize">The binary logarithm of the size of the arrays</param>
-	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
+	[MethodImpl ( MethodImplOptions.AggressiveInlining /*| MethodImplOptions.AggressiveOptimization*/ )]
 	public static unsafe void BitReverseArrayInPlace<T> ( Span<T> arrayA, Span<T> arrayB, int logArraySize )
 		where T : unmanaged
 		{
@@ -148,7 +148,7 @@ internal static class IndexReversal
 	/// <param name="arrayA">The first array</param>
 	/// <param name="arrayB">The second array</param>
 	/// <param name="logArraySize">The binary logarithm of the size of the arrays</param>
-	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
+	[MethodImpl ( MethodImplOptions.AggressiveInlining /*| MethodImplOptions.AggressiveOptimization*/ )]
 	public static unsafe void BitReverseArrayInPlace ( Span<double> arrayA, Span<double> arrayB, int logArraySize )
 		{
 		if ( _BitReverseSwapIndices is null )
@@ -186,7 +186,7 @@ internal static class IndexReversal
 	/// <param name="arrayA">The first array</param>
 	/// <param name="arrayB">The second array</param>
 	/// <param name="logArraySize">The binary logarithm of the size of the arrays</param>
-	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
+	[MethodImpl ( MethodImplOptions.AggressiveInlining /*| MethodImplOptions.AggressiveOptimization*/ )]
 	public static void BitReverseArrayInPlaceNoLut<T> (	Span<T> arrayA,	Span<T> arrayB,	int logArraySize )
 		where T : unmanaged
 		{

@@ -39,14 +39,14 @@ internal static class MathUtils
 	/// </summary>
 	/// <param name="number">The number to get the binary logarithm of.</param>
 	/// <returns>The binary logarithm of the specified number.</returns>
-	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
+	[MethodImpl ( MethodImplOptions.AggressiveInlining /*| MethodImplOptions.AggressiveOptimization*/ )]
 	public static int ILog2 ( int number ) => BitOperations.Log2 ( (nuint) number );
 
-	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
+	[MethodImpl ( MethodImplOptions.AggressiveInlining /*| MethodImplOptions.AggressiveOptimization*/ )]
 	public static int RotateBitsRight ( int number, int bitSize )
 		=> ( number >> 1 ) | ( number & 1 ) << ( bitSize - 1 );
 
-	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
+	[MethodImpl ( MethodImplOptions.AggressiveInlining /*| MethodImplOptions.AggressiveOptimization*/ )]
 	public static int RotateBitsLeft ( int number, int bitSize )
 		{
 		var Mask = ( 1 << bitSize ) - 1;
