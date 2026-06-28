@@ -101,7 +101,7 @@ Each row in the table represents a transform with an input of 4096 real values:
 | FftSharp_RealFFT             | 4096 | 235.494 μs | 7.3672 μs | 21.7224 μs | 232.985 μs | 32.32 |    2.97 |
 | FftSharp_RealFFT_Inverse     | 4096 | 239.624 μs | 7.0646 μs | 20.7193 μs | 233.636 μs | 32.89 |    2.83 |
 
-> A μs is 1 Microsecond, 0.001 milliseconds or 0.000001 sec
+> μs stands for microsecond, 1 of which equals 0.001 milliseconds or 0.000001 seconds
 
 > **Note** that NAudio does not have a real-valued FFT, so it is omitted from this benchmark.
 
@@ -130,7 +130,7 @@ Each row in the table represents a transform with an input of 4096 complex value
 | FftSharp_FFT             | 4096 | 203.76 μs | 1.089 μs | 1.019 μs | 13.96 |    0.07 |
 | FftSharp_FFT_Inverse     | 4096 | 213.26 μs | 1.661 μs | 1.553 μs | 14.62 |    0.11 |
 
-> A μs is 1 Microsecond, 0.001 milliseconds or 0.000001 sec
+> μs stands for microsecond, 1 of which equals 0.001 milliseconds or 0.000001 seconds
 
 > \* NAudio only supports its own Complex value type using 32-bit floats, so while it is faster in case of an inverse FFT, its output is also far less precise.
 
