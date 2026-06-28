@@ -32,7 +32,7 @@ using System.Runtime.InteropServices;
 
 namespace Aelian.FFT.Extensions;
 
-public static class SpanExtensions
+internal static class SpanExtensions
 	{
 	extension<TFrom> ( Span<TFrom> span )
 		where TFrom : struct
