@@ -1,4 +1,4 @@
-//#define BENCHMARK_OTHERS
+#define BENCHMARK_OTHERS
 #define USE_ALIGNED
 
 using System;
@@ -12,7 +12,11 @@ namespace Benchmarks
 	{
 	public class BenchmarkComplexFft
 		{
-		private const int RunCount = 10000;
+		private const int FastRunCount = 200000;
+		private const int RunCount = 50000;
+		private const int MediumRunCount = 5000; // For slower implementations. Makes the benchmark not take forever.
+		private const int SlowRunCount = 500; // For slower implementations. Makes the benchmark not take forever.
+
 		private Complex[]? _RandomData; // Randomly generated complex values, this will not be written to after Setup ()
 
 #if USE_ALIGNED
@@ -139,41 +143,41 @@ namespace Benchmarks
 		| Aelian.FFT                                                    |
 		\* ------------------------------------------------------------*/
 
-		[Benchmark ( Baseline = true )]
+		[Benchmark ( Baseline = true, OperationsPerInvoke = FastRunCount )]
 		public void Aelian_FFT ()
 			{
 			var ComplexSpan = _IterationData!.AsComplex ();
 
-			for ( int i = 0; i < RunCount; i++ )
+			for ( int i = 0; i < FastRunCount; i++ )
 				Aelian.FFT.FastFourierTransform.FFT ( ComplexSpan, true );
 			}
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = FastRunCount )]
 		public void Aelian_FFT_Split ()
 			{
 			var SplitRealSpan = _IterationSplitRealData!.AsSpan ();
 			var SplitImagSpan = _IterationSplitImaginaryData!.AsSpan ();
 
-			for ( int i = 0; i < RunCount; i++ )
+			for ( int i = 0; i < FastRunCount; i++ )
 				Aelian.FFT.FastFourierTransform.FFT ( SplitRealSpan, SplitImagSpan, true );
 			}
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = FastRunCount )]
 		public void Aelian_FFT_Inverse ()
 			{
 			var ComplexSpan = _IterationData!.AsComplex ();
 
-			for ( int i = 0; i < RunCount; i++ )
+			for ( int i = 0; i < FastRunCount; i++ )
 				Aelian.FFT.FastFourierTransform.FFT ( ComplexSpan, false );
 			}
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = FastRunCount )]
 		public void Aelian_FFT_Inverse_Split ()
 			{
 			var SplitRealSpan = _IterationSplitRealData!.AsSpan ();
 			var SplitImagSpan = _IterationSplitImaginaryData!.AsSpan ();
 
-			for ( int i = 0; i < RunCount; i++ )
+			for ( int i = 0; i < FastRunCount; i++ )
 				Aelian.FFT.FastFourierTransform.FFT ( SplitRealSpan, SplitImagSpan, false );
 			}
 
@@ -183,14 +187,14 @@ namespace Benchmarks
 		| NWaves                                                        |
 		\* ------------------------------------------------------------*/
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = RunCount )]
 		public void NWaves_FFT ()
 			{
 			for ( int i = 0; i < RunCount; i++ )
 				_NWavesFft64!.DirectNorm ( _InRe, _InIm, _OutRe, _OutIm );
 			}
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = RunCount )]
 		public void NWaves_FFT_Inverse ()
 			{
 			for ( int i = 0; i < RunCount; i++ )
@@ -201,17 +205,17 @@ namespace Benchmarks
 		| Math.NET                                                      |
 		\* ------------------------------------------------------------*/
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = MediumRunCount )]
 		public void MathNet_FFT ()
 			{
-			for ( int i = 0; i < RunCount; i++ )
+			for ( int i = 0; i < MediumRunCount; i++ )
 				MathNet.Numerics.IntegralTransforms.Fourier.Forward ( _ComplexBuffer );
 			}
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = MediumRunCount )]
 		public void MathNet_FFT_Inverse ()
 			{
-			for ( int i = 0; i < RunCount; i++ )
+			for ( int i = 0; i < MediumRunCount; i++ )
 				MathNet.Numerics.IntegralTransforms.Fourier.Inverse ( _ComplexBuffer );
 			}
 
@@ -219,14 +223,14 @@ namespace Benchmarks
 		| LomontFFT                                                     |
 		\* ------------------------------------------------------------*/
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = RunCount )]
 		public void Lomont_FFT ()
 			{
 			for ( int i = 0; i < RunCount; i++ )
 				_Lomont.FFT ( _RealBuffer!, true );
 			}
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = RunCount )]
 		public void Lomont_FFT_Inverse ()
 			{
 			for ( int i = 0; i < RunCount; i++ )
@@ -239,7 +243,7 @@ namespace Benchmarks
 		| 32-bit floats, resulting in reduced precision                 |
 		\* ------------------------------------------------------------*/
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = RunCount )]
 		public void NAudio_FFT_32 ()
 			{
 			var M = Aelian.FFT.MathUtils.ILog2 ( N );
@@ -248,7 +252,7 @@ namespace Benchmarks
 				NAudio.Dsp.FastFourierTransform.FFT ( true, M, _NAudioBuffer );
 			}
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = RunCount )]
 		public void NAudio_FFT_Inverse_32 ()
 			{
 			var M = Aelian.FFT.MathUtils.ILog2 ( N / 2 );
@@ -261,7 +265,7 @@ namespace Benchmarks
 		| FftFlat                                                      |
 		\* ------------------------------------------------------------*/
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = RunCount )]
 		public void FftFlat_RealFFT ()
 			{
 			var ComplexSpan = _ComplexBuffer.AsSpan ();
@@ -270,7 +274,7 @@ namespace Benchmarks
 				_FftFlat!.Forward ( ComplexSpan );
 			}
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = RunCount )]
 		public void FftFlat_RealFFT_Inverse ()
 			{
 			var ComplexSpan = _ComplexBuffer.AsSpan ();
@@ -283,17 +287,17 @@ namespace Benchmarks
 		| FftSharp                                                      |
 		\* ------------------------------------------------------------*/
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = SlowRunCount )]
 		public void FftSharp_FFT ()
 			{
-			for ( int i = 0; i < RunCount; i++ )
+			for ( int i = 0; i < SlowRunCount; i++ )
 				FftSharp.FFT.Forward ( _ComplexBuffer );
 			}
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = SlowRunCount )]
 		public void FftSharp_FFT_Inverse ()
 			{
-			for ( int i = 0; i < RunCount; i++ )
+			for ( int i = 0; i < SlowRunCount; i++ )
 				FftSharp.FFT.Inverse ( _ComplexBuffer );
 			}
 #endif

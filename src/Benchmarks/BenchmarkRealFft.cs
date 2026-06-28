@@ -1,4 +1,4 @@
-//#define BENCHMARK_OTHERS
+#define BENCHMARK_OTHERS
 #define USE_ALIGNED
 
 using System;
@@ -12,7 +12,11 @@ namespace Benchmarks
 	{
 	public class BenchmarkRealFft : IDisposable
 		{
-		private const int RunCount = 10000;
+		private const int FastRunCount = 500000;
+		private const int RunCount = 100000;
+		private const int MediumRunCount = 10000; // For slower implementations. Makes the benchmark not take forever.
+		private const int SlowRunCount = 1000; // For slower implementations. Makes the benchmark not take forever.
+
 		private double[]? _RandomData; // Randomly generated double values, this will not be written to after Setup ()
 
 #if USE_ALIGNED
@@ -149,12 +153,12 @@ namespace Benchmarks
 		| Aelian.FFT                                                    |
 		\* ------------------------------------------------------------*/
 
-		[Benchmark ( Baseline = true )]
+		[Benchmark ( Baseline = true, OperationsPerInvoke = FastRunCount )]
 		public void Aelian_RealFFT ()
 			{
 			var RealSpan = _IterationData!.AsReal ();
 
-			for ( int i = 0; i < RunCount; i++ )
+			for ( int i = 0; i < FastRunCount; i++ )
 				Aelian.FFT.FastFourierTransform.RealFFT ( RealSpan, true );
 			}
 
@@ -162,13 +166,13 @@ namespace Benchmarks
 		/// The split data overload of RealFFT is faster than the interleaved one, since it can skip unzipping and rezipping,
 		/// but it is also less practical since it splits out the real-valued samples in even and odd arrays
 		/// </summary>
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = FastRunCount )]
 		public void Aelian_RealFFT_Split ()
 			{
 			var SplitRealSpan = _IterationSplitRealData!.AsSpan ();
 			var SplitImagSpan = _IterationSplitImaginaryData!.AsSpan ();
 
-			for ( int i = 0; i < RunCount; i++ )
+			for ( int i = 0; i < FastRunCount; i++ )
 				{
 				Aelian.FFT.FastFourierTransform.RealFFT
 					(
@@ -179,12 +183,12 @@ namespace Benchmarks
 				}
 			}
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = FastRunCount )]
 		public void Aelian_RealFFT_Inverse ()
 			{
 			var RealSpan = _IterationData!.AsReal ();
 
-			for ( int i = 0; i < RunCount; i++ )
+			for ( int i = 0; i < FastRunCount; i++ )
 				Aelian.FFT.FastFourierTransform.RealFFT ( RealSpan, false );
 			}
 
@@ -192,13 +196,13 @@ namespace Benchmarks
 		/// The split data overload of RealFFT is faster than the interleaved one, since it can skip unzipping and rezipping,
 		/// but it is also less practical since it splits out the real-valued samples in even and odd arrays
 		/// </summary>
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = FastRunCount )]
 		public void Aelian_RealFFT_Inverse_Split ()
 			{
 			var SplitRealSpan = _IterationSplitRealData!.AsSpan ();
 			var SplitImagSpan = _IterationSplitImaginaryData!.AsSpan ();
 
-			for ( int i = 0; i < RunCount; i++ )
+			for ( int i = 0; i < FastRunCount; i++ )
 				{
 				Aelian.FFT.FastFourierTransform.RealFFT
 					(
@@ -215,14 +219,14 @@ namespace Benchmarks
 		| NWaves                                                        |
 		\* ------------------------------------------------------------*/
 
-		//[Benchmark]
+		[Benchmark ( OperationsPerInvoke = RunCount )]
 		public void NWaves_RealFFT_Split ()
 			{
 			for ( int i = 0; i < RunCount; i++ )
 				_NWavesRealFft64!.DirectNorm ( _RandomData, null, _OutRe, _OutIm );
 			}
 
-		//[Benchmark]
+		[Benchmark ( OperationsPerInvoke = RunCount )]
 		public void NWaves_RealFFT_Inverse_Split ()
 			{
 			for ( int i = 0; i < RunCount; i++ )
@@ -233,21 +237,21 @@ namespace Benchmarks
 		| Math.NET                                                      |
 		\* ------------------------------------------------------------*/
 
-		//[Benchmark]
+		[Benchmark ( OperationsPerInvoke = MediumRunCount )]
 		public void MathNet_RealFFT ()
 			{
 			var N = _RandomData!.Length;
 
-			for ( int i = 0; i < RunCount; i++ )
+			for ( int i = 0; i < MediumRunCount; i++ )
 				MathNet.Numerics.IntegralTransforms.Fourier.ForwardReal ( _MathNetBuffer, N );
 			}
 
-		//[Benchmark]
+		[Benchmark ( OperationsPerInvoke = MediumRunCount )]
 		public void MathNet_RealFFT_Inverse ()
 			{
 			var N = _RandomData!.Length;
 
-			for ( int i = 0; i < RunCount; i++ )
+			for ( int i = 0; i < MediumRunCount; i++ )
 				MathNet.Numerics.IntegralTransforms.Fourier.InverseReal ( _MathNetBuffer, N );
 			}
 
@@ -255,14 +259,14 @@ namespace Benchmarks
 		| LomontFFT                                                     |
 		\* ------------------------------------------------------------*/
 
-		//[Benchmark]
+		[Benchmark ( OperationsPerInvoke = RunCount )]
 		public void Lomont_RealFFT ()
 			{
 			for ( int i = 0; i < RunCount; i++ )
 				_Lomont.RealFFT ( _IterationDataArray!, true );
 			}
 
-		//[Benchmark]
+		[Benchmark ( OperationsPerInvoke = RunCount )]
 		public void Lomont_RealFFT_Inverse ()
 			{
 			for ( int i = 0; i < RunCount; i++ )
@@ -273,21 +277,21 @@ namespace Benchmarks
 		| FftFlat                                                      |
 		\* ------------------------------------------------------------*/
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = FastRunCount )]
 		public void FftFlat_RealFFT ()
 			{
 			var RealSpan = _IterationDataArrayPlus2!.AsSpan ();
 
-			for ( int i = 0; i < RunCount; i++ )
+			for ( int i = 0; i < FastRunCount; i++ )
 				_FftFlatReal!.Forward ( RealSpan );
 			}
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = FastRunCount )]
 		public void FftFlat_RealFFT_Inverse ()
 			{
 			var ComplexSpan = _InComplex.AsSpan ();
 
-			for ( int i = 0; i < RunCount; i++ )
+			for ( int i = 0; i < FastRunCount; i++ )
 				_FftFlatReal!.Inverse ( ComplexSpan );
 			}
 
@@ -295,17 +299,17 @@ namespace Benchmarks
 		| FftSharp                                                      |
 		\* ------------------------------------------------------------*/
 
-		//[Benchmark]
+		[Benchmark ( OperationsPerInvoke = SlowRunCount )]
 		public void FftSharp_RealFFT ()
 			{
-			for ( int i = 0; i < RunCount; i++ )
+			for ( int i = 0; i < SlowRunCount; i++ )
 				FftSharp.FFT.ForwardReal ( _IterationDataArray );
 			}
 
-		//[Benchmark]
+		[Benchmark ( OperationsPerInvoke = SlowRunCount )]
 		public void FftSharp_RealFFT_Inverse ()
 			{
-			for ( int i = 0; i < RunCount; i++ )
+			for ( int i = 0; i < SlowRunCount; i++ )
 				FftSharp.FFT.InverseReal ( _InComplex );
 			}
 #endif
