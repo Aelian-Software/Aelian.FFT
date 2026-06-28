@@ -82,7 +82,7 @@ The following alternative implementations were used in this benchmark:
 
 ### Real-valued input
 
-Each benchmark represents a single transform with an input of 4096 real values:
+Each row in the table represents a transform with an input of 4096 real values:
 
 | Method                       | N    | Mean       | Error     | StdDev     | Median     | Ratio | RatioSD |
 |----------------------------- |----- |-----------:|----------:|-----------:|-----------:|------:|--------:|
@@ -109,7 +109,7 @@ Each benchmark represents a single transform with an input of 4096 real values:
 
 ### Complex-valued input
 
-Each benchmark represents a single transform with an input of 4096 complex values:
+Each row in the table represents a transform with an input of 4096 complex values:
 
 | Method                   | N    | Mean      | Error    | StdDev   | Ratio | RatioSD |
 |------------------------- |----- |----------:|---------:|---------:|------:|--------:|
