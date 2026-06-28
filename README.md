@@ -86,10 +86,10 @@ Each benchmark represents a single transform with an input of 4096 real values:
 
 | Method                       | N    | Mean       | Error     | StdDev     | Median     | Ratio | RatioSD |
 |----------------------------- |----- |-----------:|----------:|-----------:|-----------:|------:|--------:|
-| **Aelian_RealFFT**               | 4096 |   **7.287 us** | 0.0209 us |  0.0186 us |   7.288 us |  1.00 |    0.00 |
-| **Aelian_RealFFT_Split**         | 4096 |   **6.032 us** | 0.0148 us |  0.0131 us |   6.031 us |  0.83 |    0.00 |
-| **Aelian_RealFFT_Inverse**       | 4096 |   **7.346 us** | 0.0190 us | 0.0169 us |  7.347 us |  1.00 |    0.00 |
-| **Aelian_RealFFT_Inverse_Split** | 4096 |   **6.707 us** | 0.0261 us |  0.0244 us |   6.712 us |  0.92 |    0.00 |
+| **Aelian_RealFFT**               | 4096 |   **7.287 μs** | 0.0209 μs |  0.0186 μs |   7.288 μs |  1.00 |    0.00 |
+| **Aelian_RealFFT_Split**         | 4096 |   **6.032 μs** | 0.0148 μs |  0.0131 μs |   6.031 μs |  0.83 |    0.00 |
+| **Aelian_RealFFT_Inverse**       | 4096 |   **7.346 μs** | 0.0190 μs | 0.0169 μs |  7.347 μs |  1.00 |    0.00 |
+| **Aelian_RealFFT_Inverse_Split** | 4096 |   **6.707 μs** | 0.0261 μs |  0.0244 μs |   6.712 μs |  0.92 |    0.00 |
 | NWaves_RealFFT_Split         | 4096 |  10.972 μs | 0.0335 μs |  0.0313 μs |  10.981 μs |  1.51 |    0.01 |
 | NWaves_RealFFT_Inverse_Split | 4096 |  12.737 μs | 0.0347 μs |  0.0307 μs |  12.747 μs |  1.75 |    0.01 |
 | MathNet_RealFFT              | 4096 |  55.588 μs | 0.9413 μs |  1.0841 μs |  55.507 μs |  7.63 |    0.15 |
