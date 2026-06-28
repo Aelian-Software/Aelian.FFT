@@ -143,6 +143,43 @@ internal static class IndexReversal
 		}
 
 	/// <summary>
+	/// Shuffles the elements of two double arrays so that each element ends up at the index that is the bit-reverse of its original index
+	/// </summary>
+	/// <param name="arrayA">The first array</param>
+	/// <param name="arrayB">The second array</param>
+	/// <param name="logArraySize">The binary logarithm of the size of the arrays</param>
+	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
+	public static unsafe void BitReverseArrayInPlace ( Span<double> arrayA, Span<double> arrayB, int logArraySize )
+		{
+		if ( _BitReverseSwapIndices is null )
+			throw new InvalidOperationException ( "IndexReversal.CalculateBitReverseIndices () has not yet been called" );
+
+		var BitReverseSwaps = _BitReverseSwapIndices[logArraySize];
+		var PairCount = BitReverseSwaps.Length;
+
+		fixed ( SwapPair* pPairs = BitReverseSwaps )
+		fixed ( double* pArrayA = arrayA )
+		fixed ( double* pArrayB = arrayB )
+			{
+			var pPair = pPairs;
+
+			for ( int i = 0; i < PairCount; i++, pPair++ )
+				{
+				var IndexA = pPair->IndexA;
+				var IndexB = pPair->IndexB;
+
+				var TmpA = pArrayA[IndexA];
+				pArrayA[IndexA] = pArrayA[IndexB];
+				pArrayA[IndexB] = TmpA;
+
+				var TmpB = pArrayB[IndexA];
+				pArrayB[IndexA] = pArrayB[IndexB];
+				pArrayB[IndexB] = TmpB;
+				}
+			}
+		}
+
+	/// <summary>
 	/// Shuffles the elements of two arrays so that each element ends up at the index that is the bit-reverse of its original index
 	/// </summary>
 	/// <typeparam name="T">The array type</typeparam>
