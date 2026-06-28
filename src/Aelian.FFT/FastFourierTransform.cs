@@ -494,6 +494,9 @@ public static class FastFourierTransform
 	public static void RealFFT ( Span<Complex> buffer, bool forward, FftFlags flags = FftFlags.None )
 		=> RealFFT ( MemoryMarshal.Cast<Complex, double> ( buffer ), forward, flags );
 
+	private static readonly AlignedMemory<double> _DebugScratchA = AlignedMemory<double>.Allocate ( 1024 * 16 );
+	private static readonly AlignedMemory<double> _DebugScratchB = AlignedMemory<double>.Allocate ( 1024 * 16 );
+
 	/// <summary>
 	/// Compute the forward or inverse Fourier Transform of real-valued data.
 	/// The data is modified in place.
@@ -513,6 +516,16 @@ public static class FastFourierTransform
 		{
 		var N = buffer.Length >> 1;
 
+#if true
+		var RealValues = _DebugScratchA.AsSpan ().Slice ( 0, N );
+		var ImagValues = _DebugScratchB.AsSpan ().Slice ( 0, N );
+		ScratchArrayZip.UnZipToScratches ( buffer, RealValues, ImagValues );
+
+		var NormalizeFactor = ( flags & FftFlags.DoNotNormalize ) != 0 ? ( N * 2.0 ) : 1.0; // TODO: This is wonky, we should be able to skip normalization alltogether. More research needed.
+		RealFFT ( RealValues, ImagValues, forward, NormalizeFactor );
+
+		ScratchArrayZip.ZipFromScratches ( buffer, RealValues, ImagValues );
+#else
 		ArrayZip.UnZipInPlacePow2 ( buffer ); // Unzip
 
 		var RealValues = buffer.Slice ( 0, N );
@@ -522,6 +535,7 @@ public static class FastFourierTransform
 		RealFFT ( RealValues, ImagValues, forward, NormalizeFactor );
 
 		ArrayZip.ZipInPlacePow2 ( buffer ); // Re-zip
+#endif
 		}
 
 	/// <summary>
@@ -540,7 +554,7 @@ public static class FastFourierTransform
 	/// <param name="forward">Specifies whether to perform a forward or inverse transform.</param>
 	/// <param name="normalizeFactor">Normalization factor, should be left at the default of 1.0 in most cases.</param>
 	/// <exception cref="NotSupportedException">Buffer length is shorter than 16.</exception>
-	public static void RealFFT ( Span<double> complexRealValues, Span<double> complexImagValues, bool forward, double normalizeFactor = 1.0 )
+	public static unsafe void RealFFT ( Span<double> complexRealValues, Span<double> complexImagValues, bool forward, double normalizeFactor = 1.0 )
 		{
 		if ( _RealRootsOfUnity is null || _ImagRootsOfUnity is null || _ImagInverseRootsOfUnity is null )
 			throw new InvalidOperationException ( "FastFourierTransform.Initialize () has not yet been called" );
@@ -646,28 +660,50 @@ public static class FastFourierTransform
 			{
 			Vector512<double> KReal, KImag, OppositeKReal, OppositeKImag, RealRootOfUnity, ImagRootOfUnity, a, b, c, d, e, f;
 
-			for ( var k = 1; k < VectorizedOpCount; k++, OppositeK-- )
+			fixed ( Vector512<double>* pVecRealValues = VecRealValues )
+			fixed ( Vector512<double>* pVecImagValues = VecImagValues )
+			fixed ( Vector512<double>* pShiftVecRealValues = ShiftVecRealValues )
+			fixed ( Vector512<double>* pShiftVecImagValues = ShiftVecImagValues )
+			fixed ( Vector512<double>* pVecRealRootsOfUnity = VecRealRootsOfUnity )
+			fixed ( Vector512<double>* pVecImagRootsOfUnity = VecImagRootsOfUnity )
 				{
-				KReal = VecRealValues[k];
-				KImag = VecImagValues[k];
-				OppositeKReal = Reverse ( ShiftVecRealValues[OppositeK] );
-				OppositeKImag = Reverse ( ShiftVecImagValues[OppositeK] );
+				var pVecRealRootsOfUnityCur = pVecRealRootsOfUnity + 1;
+				var pVecImagRootsOfUnityCur = pVecImagRootsOfUnity + 1;
+				var pVecRealValue = pVecRealValues + 1;
+				var pVecImagValue = pVecImagValues + 1;
+				var pShiftVecRealValue = pShiftVecRealValues + OppositeK;
+				var pShiftVecImagValue = pShiftVecImagValues + OppositeK;
 
-				RealRootOfUnity = VecRealRootsOfUnity[k];
-				ImagRootOfUnity = VecImagRootsOfUnity[k];
+				for ( var k = 1; k < VectorizedOpCount; k++ )
+					{
+					KReal = *pVecRealValue;
+					KImag = *pVecImagValue;
+					OppositeKReal = Reverse ( *pShiftVecRealValue );
+					OppositeKImag = Reverse ( *pShiftVecImagValue );
 
-				a = ( KReal - OppositeKReal ) * ImagRootOfUnity;
-				b = ( KImag + OppositeKImag ) * RealRootOfUnity;
-				c = ( KReal - OppositeKReal ) * RealRootOfUnity;
-				d = ( KImag + OppositeKImag ) * ImagRootOfUnity;
-				e = KReal + OppositeKReal;
-				f = KImag - OppositeKImag;
+					RealRootOfUnity = *pVecRealRootsOfUnityCur;
+					ImagRootOfUnity = *pVecImagRootsOfUnityCur;
 
-				VecRealValues[k] = VecHalf * ( e + VecSign * ( a + b ) );
-				VecImagValues[k] = VecHalf * ( f + VecSign * ( d - c ) );
+					a = ( KReal - OppositeKReal ) * ImagRootOfUnity;
+					b = ( KImag + OppositeKImag ) * RealRootOfUnity;
+					c = ( KReal - OppositeKReal ) * RealRootOfUnity;
+					d = ( KImag + OppositeKImag ) * ImagRootOfUnity;
+					e = KReal + OppositeKReal;
+					f = KImag - OppositeKImag;
 
-				ShiftVecRealValues[OppositeK] = Reverse ( VecHalf * ( e - VecSign * ( b + a ) ) );
-				ShiftVecImagValues[OppositeK] = Reverse ( VecHalf * ( VecSign * ( d - c ) - f ) );
+					*pVecRealValue = VecHalf * ( e + VecSign * ( a + b ) );
+					*pVecImagValue = VecHalf * ( f + VecSign * ( d - c ) );
+
+					*pShiftVecRealValue = Reverse ( VecHalf * ( e - VecSign * ( b + a ) ) );
+					*pShiftVecImagValue = Reverse ( VecHalf * ( VecSign * ( d - c ) - f ) );
+
+					pVecRealRootsOfUnityCur++;
+					pVecImagRootsOfUnityCur++;
+					pVecRealValue++;
+					pVecImagValue++;
+					pShiftVecRealValue--;
+					pShiftVecImagValue--;
+					}
 				}
 			}
 
