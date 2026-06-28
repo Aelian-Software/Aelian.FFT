@@ -28,7 +28,6 @@
 // SOFTWARE.
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 
@@ -36,10 +35,9 @@ namespace Aelian.FFT;
 
 internal static class IndexReversal
 	{
-	private static int[][]? _BitReverseIndices;
 	private static SwapPair[][]? _BitReverseSwapIndices;
 
-	private struct SwapPair
+	private readonly struct SwapPair
 		{
 		public readonly int IndexA;
 		public readonly int IndexB;
@@ -84,33 +82,24 @@ internal static class IndexReversal
 
 	public static void CalculateBitReverseIndices ()
 		{
-		_BitReverseIndices = new int[Constants.MaxTableDepth][];
 		_BitReverseSwapIndices = new SwapPair[Constants.MaxTableDepth][];
 
-		for ( int i = 0; i < Constants.MaxTableDepth; i++ )
+		for ( int Depth = 0; Depth < Constants.MaxTableDepth; Depth++ )
 			{
-			var N = 1 << i;
+			int N = 1 << Depth;
+			var Indices = new int[N];
+			var Swaps = new List<SwapPair> ( N / 2 );
 
-			_BitReverseIndices[i] = new int[N];
-			var Touched = new BitArray ( N );
-			var Swaps = new List<SwapPair> ();
-
-			for ( int j = 0; j < N; j++ )
+			for ( int i = 0; i < N; i++ )
 				{
-				var NewIndex = ReverseBitOrder ( j, i );
+				int Reversed = ReverseBitOrder ( i, Depth );
+				Indices[i] = Reversed;
 
-				_BitReverseIndices[i][j] = NewIndex;
-
-				if ( NewIndex != j && !Touched[NewIndex] && !Touched[j] )
-					Swaps.Add ( new SwapPair ( j, NewIndex ) );
-
-				_BitReverseIndices[i][j] = NewIndex;
-
-				Touched[j] = true;
-				Touched[NewIndex] = true;
+				if ( Reversed > i )
+					Swaps.Add ( new SwapPair ( i, Reversed ) );
 				}
 
-			_BitReverseSwapIndices[i] = Swaps.ToArray ();
+			_BitReverseSwapIndices[Depth] = Swaps.ToArray ();
 			}
 		}
 
@@ -122,22 +111,34 @@ internal static class IndexReversal
 	/// <param name="arrayB">The second array</param>
 	/// <param name="logArraySize">The binary logarithm of the size of the arrays</param>
 	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
-	public static void BitReverseArrayInPlace<T> ( Span<T> arrayA, Span<T> arrayB, int logArraySize )
+	public static unsafe void BitReverseArrayInPlace<T> ( Span<T> arrayA, Span<T> arrayB, int logArraySize )
+		where T : unmanaged
 		{
 		if ( _BitReverseSwapIndices is null )
 			throw new InvalidOperationException ( "IndexReversal.CalculateBitReverseIndices () has not yet been called" );
 
 		var BitReverseSwaps = _BitReverseSwapIndices[logArraySize];
+		var PairCount = BitReverseSwaps.Length;
 
-		foreach ( var Swap in BitReverseSwaps )
+		fixed ( SwapPair* pPairs = BitReverseSwaps )
+		fixed ( T* pArrayA = arrayA )
+		fixed ( T* pArrayB = arrayB )
 			{
-			var TmpA = arrayA[Swap.IndexA];
-			arrayA[Swap.IndexA] = arrayA[Swap.IndexB];
-			arrayA[Swap.IndexB] = TmpA;
+			var pPair = pPairs;
 
-			var TmpB = arrayB[Swap.IndexA];
-			arrayB[Swap.IndexA] = arrayB[Swap.IndexB];
-			arrayB[Swap.IndexB] = TmpB;
+			for ( int i = 0; i < PairCount; i++, pPair++ )
+				{
+				var IndexA = pPair->IndexA;
+				var IndexB = pPair->IndexB;
+
+				var TmpA = pArrayA[IndexA];
+				pArrayA[IndexA] = pArrayA[IndexB];
+				pArrayA[IndexB] = TmpA;
+
+				var TmpB = pArrayB[IndexA];
+				pArrayB[IndexA] = pArrayB[IndexB];
+				pArrayB[IndexB] = TmpB;
+				}
 			}
 		}
 
@@ -149,22 +150,47 @@ internal static class IndexReversal
 	/// <param name="arrayB">The second array</param>
 	/// <param name="logArraySize">The binary logarithm of the size of the arrays</param>
 	[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
-	public static void BitReverseArrayInPlaceNoLUT<T> ( Span<T> arrayA, Span<T> arrayB, int logArraySize )
+	public static void BitReverseArrayInPlaceNoLut<T> (	Span<T> arrayA,	Span<T> arrayB,	int logArraySize )
+		where T : unmanaged
 		{
-		for ( int i = 0; i < arrayA.Length; i++ )
-			{
-			var Inverse = FastReverseBitOrder ( i, logArraySize );
+		int N = 1 << logArraySize;
 
-			if ( Inverse <= i )
+		if ( (uint) N > (uint) arrayA.Length || (uint) N > (uint) arrayB.Length )
+			throw new ArgumentException ( "The spans are shorter than the transform size." );
+
+		ref T RefArrayA = ref System.Runtime.InteropServices.MemoryMarshal.GetReference ( arrayA );
+		ref T RefArrayB = ref System.Runtime.InteropServices.MemoryMarshal.GetReference ( arrayB );
+
+		int j = 0;
+
+		for ( int i = 1; i < N - 1; i++ )
+			{
+			int Bit = N >> 1;
+
+			while ( ( j & Bit ) != 0 )
+				{
+				j ^= Bit;
+				Bit >>= 1;
+				}
+
+			j ^= Bit;
+
+			if ( i >= j )
 				continue;
 
-			var TmpA = arrayA[i];
-			arrayA[i] = arrayA[Inverse];
-			arrayA[Inverse] = TmpA;
+			ref T AI = ref Unsafe.Add ( ref RefArrayA, i );
+			ref T AJ = ref Unsafe.Add ( ref RefArrayA, j );
+			
+			T TempA = AI;
+			AI = AJ;
+			AJ = TempA;
 
-			var TmpB = arrayB[i];
-			arrayB[i] = arrayB[Inverse];
-			arrayB[Inverse] = TmpB;
+			ref T BI = ref Unsafe.Add ( ref RefArrayB, i );
+			ref T BJ = ref Unsafe.Add ( ref RefArrayB, j );
+			
+			T TempB = BI;
+			BI = BJ;
+			BJ = TempB;
 			}
 		}
 	}
