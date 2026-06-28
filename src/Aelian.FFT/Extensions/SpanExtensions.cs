@@ -27,14 +27,18 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-namespace Aelian.FFT;
+using System;
+using System.Runtime.InteropServices;
 
-internal static class Constants
+namespace Aelian.FFT.Extensions;
+
+internal static class SpanExtensions
 	{
-	/// <summary>
-	/// Determines the size of the precalculated tables and the the maximum FFT size. 
-	/// The maximum FFT size is 2^(MaxTableDepth-2) real-valued samples or 2^(MaxTableDepth-3) complex values.
-	/// </summary>
-	public const int MaxTableDepth = 18;
+	extension<TFrom> ( Span<TFrom> span )
+		where TFrom : struct
+		{
+		public Span<TTo> Cast<TTo> ()
+			where TTo : struct
+			=> MemoryMarshal.Cast<TFrom, TTo> ( span );
+		}
 	}
-

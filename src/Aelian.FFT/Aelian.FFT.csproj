@@ -2,6 +2,10 @@
 
 	<PropertyGroup>
 		<TargetFramework>net10.0</TargetFramework>
+		<LangVersion>14</LangVersion>
+		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+		<Nullable>enable</Nullable>
+		
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<Authors>Bas Tossings</Authors>
 		<Company>Aelian</Company>
@@ -9,19 +13,18 @@
 		<Copyright>© 2024–$([System.DateTime]::UtcNow.ToString('yyyy')) Bas Tossings, Aelian</Copyright>
 		<RepositoryUrl>https://github.com/Aelian-Software/Aelian.FFT</RepositoryUrl>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageLicenseFile>LICENSE</PackageLicenseFile>
-		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+		<PackageLicenseFile>LICENSE</PackageLicenseFile>		
 	</PropertyGroup>
 
 	<ItemGroup>
-	  <None Include="..\..\LICENSE">
-	    <Pack>True</Pack>
-	    <PackagePath>\</PackagePath>
-	  </None>
-	  <None Include="..\..\README.md">
-	    <Pack>True</Pack>
-	    <PackagePath>\</PackagePath>
-	  </None>
+		<None Include="..\..\LICENSE">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+		<None Include="..\..\README.md">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
 	</ItemGroup>
 
 </Project>

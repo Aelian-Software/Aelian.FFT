@@ -1,8 +1,10 @@
 #define BENCHMARK_OTHERS
+#define USE_ALIGNED
 
 using System;
 using System.Numerics;
-using System.Runtime.CompilerServices;
+
+using Aelian.FFT.Extensions;
 
 using BenchmarkDotNet.Attributes;
 
@@ -10,10 +12,36 @@ namespace Benchmarks
 	{
 	public class BenchmarkComplexFft
 		{
-		private const int RunCount = 10000;
-		private Complex[] ComplexInputData { get; set; }
-		private double[] ComplexInputDataReal { get; set; }
-		private double[] ComplexInputDataImag { get; set; }
+		private const int FastRunCount = 200000;
+		private const int RunCount = 50000;
+		private const int MediumRunCount = 5000; // For slower implementations. Makes the benchmark not take forever.
+		private const int SlowRunCount = 500; // For slower implementations. Makes the benchmark not take forever.
+
+		private Complex[]? _RandomData; // Randomly generated complex values, this will not be written to after Setup ()
+
+#if USE_ALIGNED
+		private Aelian.FFT.AlignedSignalData? _IterationData; // Input: Samples, Output: complex spectrum interleaved real/imaginary values
+		private Aelian.FFT.AlignedMemory<double>? _IterationSplitRealData; // Input: Even samples, Output: complex spectrum values' real components
+		private Aelian.FFT.AlignedMemory<double>? _IterationSplitImaginaryData; // Input: Odd samples, Output: complex spectrum values' imaginary components
+#else
+		private Aelian.FFT.SignalData? _IterationData; // Input: Samples, Output: complex spectrum interleaved real/imaginary values
+		private double[]? _IterationSplitRealData; // Input: Even samples, Output: complex spectrum values' real components
+		private double[]? _IterationSplitImaginaryData; // Input: Odd samples, Output: complex spectrum values' imaginary components
+#endif
+
+		// Other implementation state
+
+		private NWaves.Transforms.Fft64? _NWavesFft64;
+		private Lomont.LomontFFT _Lomont = new () { A = 1, B = -1 };
+		private FftFlat.FastFourierTransform? _FftFlat;
+
+		private double[]? _InRe;
+		private double[]? _InIm;
+		private double[]? _OutRe;
+		private double[]? _OutIm;
+		private Complex[]? _ComplexBuffer;
+		private double[]? _RealBuffer;
+		private NAudio.Dsp.Complex[]? _NAudioBuffer;
 
 		[Params ( 4096 )]
 		public int N;
@@ -21,87 +49,136 @@ namespace Benchmarks
 		[GlobalSetup]
 		public void Setup ()
 			{
-			var Rnd = new Random ();
-			ComplexInputData = new Complex[N];
-			ComplexInputDataReal = new double[N];
-			ComplexInputDataImag = new double[N];
+			var Rnd = new Random ( 1337 );
+			_RandomData = new Complex[N];
+
+#if USE_ALIGNED
+			_IterationData = Aelian.FFT.AlignedSignalData.AllocateFromComplexSize ( N );
+			_IterationSplitRealData = Aelian.FFT.AlignedMemory<double>.Allocate ( _IterationData.ComplexLength );
+			_IterationSplitImaginaryData = Aelian.FFT.AlignedMemory<double>.Allocate ( _IterationData.ComplexLength );
+#else
+			_IterationData = Aelian.FFT.SignalData.CreateFromRealSize ( N );
+			_IterationSplitRealData = new double[_IterationData.ComplexLength];
+			_IterationSplitImaginaryData = new double[_IterationData.ComplexLength];
+#endif
+
+			var IterationDataSpan = _IterationData.AsComplex ();
+			var SplitRealSpan = _IterationSplitRealData.AsSpan ();
+			var SplitImaginarySpan = _IterationSplitImaginaryData.AsSpan ();
 
 			for ( int i = 0; i < N; i++ )
 				{
-				ComplexInputData[i] = new Complex ( Rnd.NextDouble () * 2.0 - 1.0, Rnd.NextDouble () * 2.0 - 1.0 );
-				ComplexInputDataReal[i] = ComplexInputData[i].Real;
-				ComplexInputDataImag[i] = ComplexInputData[i].Imaginary;
+				IterationDataSpan[i] = new Complex ( Rnd.NextDouble () * 2.0 - 1.0, Rnd.NextDouble () * 2.0 - 1.0 );
+				SplitRealSpan[i] = IterationDataSpan[i].Real;
+				SplitImaginarySpan[i] = IterationDataSpan[i].Imaginary;
 				}				
 
 			Aelian.FFT.FastFourierTransform.Initialize ();
+
+			// Initialize other implementations
+
+			_NWavesFft64 = new NWaves.Transforms.Fft64 ( N );
+			_FftFlat = new FftFlat.FastFourierTransform ( N );
+
+			_InRe = new double[_IterationData.ComplexLength];
+			_InIm = new double[_IterationData.ComplexLength];
+			_OutRe = new double[_IterationData.ComplexLength];
+			_OutIm = new double[_IterationData.ComplexLength];
+			_ComplexBuffer = new Complex[_IterationData.ComplexLength];
+			_RealBuffer = new double[_IterationData.RealLength];
+			_NAudioBuffer = new NAudio.Dsp.Complex[_IterationData.ComplexLength];
 			}
 
-		private unsafe void CopySourceData<T> ( T[] toBuffer )
-			where T : unmanaged
+		/// <summary>
+		/// Initialize this benchmark iteration, copying the randomly generated _RealInputData to the buffers used for transformation
+		/// </summary>
+		[IterationSetup]
+		public void IterationSetup ()
 			{
-			var ByteSize = ComplexInputData.Length * sizeof ( double );
-			var DestByteSize = toBuffer.Length * sizeof ( T );
+			if
+				(
+				_IterationData is null
+				|| _IterationSplitRealData is null
+				|| _IterationSplitImaginaryData is null
+				|| _RandomData is null
+				|| _InRe is null
+				|| _InIm is null
+				|| _OutRe is null
+				|| _OutIm is null
+				|| _ComplexBuffer is null
+				|| _NAudioBuffer is null
+				)
+				throw new Exception ( "Not all fields have been initialized" );
 
-			fixed ( T* pData = toBuffer )
-			fixed ( Complex* pSource = ComplexInputData )
+#if USE_ALIGNED
+			_RandomData.AsSpan ().CopyTo ( _IterationData.AsSpanOf<Complex> () );
+#else
+			_RandomData.AsSpan ().CopyTo ( _IterationData.AsReal () );
+#endif
+
+			var ComplexSpan = _RandomData.AsSpan ();
+			var RealSpan = ComplexSpan.Cast<Complex, double> ();
+			var SplitRealSpan = _IterationSplitRealData.AsSpan ();
+			var SplitImaginarySpan = _IterationSplitImaginaryData.AsSpan ();
+
+			for ( int i = 0; i < N; i++ )
 				{
-				Unsafe.CopyBlock ( pData, pSource, (uint) Math.Min ( ByteSize, DestByteSize ) );
+				SplitRealSpan[i] = ComplexSpan[i].Real;
+				SplitImaginarySpan[i] = ComplexSpan[i].Imaginary;
+
+				_InRe[i] = SplitRealSpan[i];
+				_InIm[i] = SplitImaginarySpan[i];
+
+				_NAudioBuffer[i] = new NAudio.Dsp.Complex () { X = (float) ComplexSpan[i].Real, Y = (float) ComplexSpan[i].Imaginary };
 				}
-			}
 
-		private void CopySourceData<T> ( NAudio.Dsp.Complex[] toBuffer )
-			where T : unmanaged
-			{
-			var CommonSize = Math.Min ( ComplexInputData.Length, toBuffer.Length );
+			ComplexSpan.CopyTo ( _ComplexBuffer );
+			RealSpan.CopyTo ( _RealBuffer );
 
-			for ( int i = 0; i < CommonSize; i++ )
-				toBuffer[i] = new NAudio.Dsp.Complex () { X = (float) ComplexInputData[i].Real, Y = (float) ComplexInputData[i].Imaginary };
+			_OutRe.AsSpan ().Clear ();
+			_OutIm.AsSpan ().Clear ();
 			}
 
 		/*--------------------------------------------------------------\
 		| Aelian.FFT                                                    |
 		\* ------------------------------------------------------------*/
 
-		[Benchmark ( Baseline = true )]
+		[Benchmark ( Baseline = true, OperationsPerInvoke = FastRunCount )]
 		public void Aelian_FFT ()
 			{
-			var Buffer = new Complex[ComplexInputData.Length];
+			var ComplexSpan = _IterationData!.AsComplex ();
 
-			CopySourceData ( Buffer );
-
-			for ( int i = 0; i < RunCount; i++ )
-				Aelian.FFT.FastFourierTransform.FFT ( Buffer, true );
+			for ( int i = 0; i < FastRunCount; i++ )
+				Aelian.FFT.FastFourierTransform.FFT ( ComplexSpan, true );
 			}
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = FastRunCount )]
 		public void Aelian_FFT_Split ()
 			{
-			var BufferRe = (double[]) ComplexInputDataReal.Clone ();
-			var BufferIm = (double[]) ComplexInputDataImag.Clone ();
+			var SplitRealSpan = _IterationSplitRealData!.AsSpan ();
+			var SplitImagSpan = _IterationSplitImaginaryData!.AsSpan ();
 
-			for ( int i = 0; i < RunCount; i++ )
-				Aelian.FFT.FastFourierTransform.FFT ( BufferRe, BufferIm, true );
+			for ( int i = 0; i < FastRunCount; i++ )
+				Aelian.FFT.FastFourierTransform.FFT ( SplitRealSpan, SplitImagSpan, true );
 			}
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = FastRunCount )]
 		public void Aelian_FFT_Inverse ()
 			{
-			var Buffer = new Complex[ComplexInputData.Length];
+			var ComplexSpan = _IterationData!.AsComplex ();
 
-			CopySourceData ( Buffer );
-
-			for ( int i = 0; i < RunCount; i++ )
-				Aelian.FFT.FastFourierTransform.FFT ( Buffer, false );
+			for ( int i = 0; i < FastRunCount; i++ )
+				Aelian.FFT.FastFourierTransform.FFT ( ComplexSpan, false );
 			}
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = FastRunCount )]
 		public void Aelian_FFT_Inverse_Split ()
 			{
-			var BufferRe = (double[]) ComplexInputDataReal.Clone ();
-			var BufferIm = (double[]) ComplexInputDataImag.Clone ();
+			var SplitRealSpan = _IterationSplitRealData!.AsSpan ();
+			var SplitImagSpan = _IterationSplitImaginaryData!.AsSpan ();
 
-			for ( int i = 0; i < RunCount; i++ )
-				Aelian.FFT.FastFourierTransform.FFT ( BufferRe, BufferIm, false );
+			for ( int i = 0; i < FastRunCount; i++ )
+				Aelian.FFT.FastFourierTransform.FFT ( SplitRealSpan, SplitImagSpan, false );
 			}
 
 #if BENCHMARK_OTHERS
@@ -110,86 +187,54 @@ namespace Benchmarks
 		| NWaves                                                        |
 		\* ------------------------------------------------------------*/
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = RunCount )]
 		public void NWaves_FFT ()
 			{
-			var NWaves = new NWaves.Transforms.Fft64 ( ComplexInputData.Length );
-
-			var BufferRe = (double[]) ComplexInputDataReal.Clone ();
-			var BufferIm = (double[]) ComplexInputDataImag.Clone ();
-			var OutRe = new double[ComplexInputData.Length];
-			var OutIm = new double[ComplexInputData.Length];
-
 			for ( int i = 0; i < RunCount; i++ )
-				NWaves.DirectNorm ( BufferRe, BufferIm, OutRe, OutIm );
+				_NWavesFft64!.DirectNorm ( _InRe, _InIm, _OutRe, _OutIm );
 			}
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = RunCount )]
 		public void NWaves_FFT_Inverse ()
 			{
-			var NWaves = new NWaves.Transforms.Fft64 ( ComplexInputData.Length );
-
-			var BufferRe = (double[]) ComplexInputDataReal.Clone ();
-			var BufferIm = (double[]) ComplexInputDataImag.Clone ();
-			var OutRe = new double[ComplexInputData.Length];
-			var OutIm = new double[ComplexInputData.Length];
-
 			for ( int i = 0; i < RunCount; i++ )
-				NWaves.InverseNorm ( BufferRe, BufferIm, OutRe, OutIm );
+				_NWavesFft64!.InverseNorm ( _InRe, _InIm, _OutRe, _OutIm );
 			}
 
 		/*--------------------------------------------------------------\
 		| Math.NET                                                      |
 		\* ------------------------------------------------------------*/
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = MediumRunCount )]
 		public void MathNet_FFT ()
 			{
-			var Buffer = new Complex[ComplexInputData.Length];
-
-			CopySourceData ( Buffer );
-
-			for ( int i = 0; i < RunCount; i++ )
-				MathNet.Numerics.IntegralTransforms.Fourier.Forward ( Buffer );
+			for ( int i = 0; i < MediumRunCount; i++ )
+				MathNet.Numerics.IntegralTransforms.Fourier.Forward ( _ComplexBuffer );
 			}
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = MediumRunCount )]
 		public void MathNet_FFT_Inverse ()
 			{
-			var Buffer = new Complex[ComplexInputData.Length];
-
-			CopySourceData ( Buffer );
-
-			for ( int i = 0; i < RunCount; i++ )
-				MathNet.Numerics.IntegralTransforms.Fourier.Inverse ( Buffer );
+			for ( int i = 0; i < MediumRunCount; i++ )
+				MathNet.Numerics.IntegralTransforms.Fourier.Inverse ( _ComplexBuffer );
 			}
 
 		/*--------------------------------------------------------------\
 		| LomontFFT                                                     |
 		\* ------------------------------------------------------------*/
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = RunCount )]
 		public void Lomont_FFT ()
 			{
-			var Lomont = new Lomont.LomontFFT () { A = 1, B = -1 };
-			var Buffer = new double[ComplexInputData.Length * 2];
-
-			CopySourceData ( Buffer );
-
 			for ( int i = 0; i < RunCount; i++ )
-				Lomont.FFT ( Buffer, true );
+				_Lomont.FFT ( _RealBuffer!, true );
 			}
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = RunCount )]
 		public void Lomont_FFT_Inverse ()
 			{
-			var Lomont = new Lomont.LomontFFT () { A = 1, B = -1 };
-			var Buffer = new double[ComplexInputData.Length * 2];
-
-			CopySourceData ( Buffer );
-
 			for ( int i = 0; i < RunCount; i++ )
-				Lomont.FFT ( Buffer, false );
+				_Lomont.FFT ( _RealBuffer!, false );
 			}
 
 		/*--------------------------------------------------------------\
@@ -198,56 +243,72 @@ namespace Benchmarks
 		| 32-bit floats, resulting in reduced precision                 |
 		\* ------------------------------------------------------------*/
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = RunCount )]
 		public void NAudio_FFT_32 ()
 			{
-			var Buffer = new NAudio.Dsp.Complex[ComplexInputData.Length];
-			var M = Aelian.FFT.MathUtils.ILog2 ( Buffer.Length );
-
-			CopySourceData ( Buffer );
+			var M = Aelian.FFT.MathUtils.ILog2 ( N );
 
 			for ( int i = 0; i < RunCount; i++ )
-				NAudio.Dsp.FastFourierTransform.FFT ( true, M, Buffer );
+				NAudio.Dsp.FastFourierTransform.FFT ( true, M, _NAudioBuffer );
 			}
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = RunCount )]
 		public void NAudio_FFT_Inverse_32 ()
 			{
-			var Buffer = new NAudio.Dsp.Complex[ComplexInputData.Length / 2];
-			var M = Aelian.FFT.MathUtils.ILog2 ( Buffer.Length );
-
-			CopySourceData ( Buffer );
+			var M = Aelian.FFT.MathUtils.ILog2 ( N / 2 );
 
 			for ( int i = 0; i < RunCount; i++ )
-				NAudio.Dsp.FastFourierTransform.FFT ( false, M, Buffer );
+				NAudio.Dsp.FastFourierTransform.FFT ( false, M, _NAudioBuffer );
+			}
+
+		/*--------------------------------------------------------------\
+		| FftFlat                                                      |
+		\* ------------------------------------------------------------*/
+
+		[Benchmark ( OperationsPerInvoke = RunCount )]
+		public void FftFlat_RealFFT ()
+			{
+			var ComplexSpan = _ComplexBuffer.AsSpan ();
+
+			for ( int i = 0; i < RunCount; i++ )
+				_FftFlat!.Forward ( ComplexSpan );
+			}
+
+		[Benchmark ( OperationsPerInvoke = RunCount )]
+		public void FftFlat_RealFFT_Inverse ()
+			{
+			var ComplexSpan = _ComplexBuffer.AsSpan ();
+
+			for ( int i = 0; i < RunCount; i++ )
+				_FftFlat!.Inverse ( ComplexSpan );
 			}
 
 		/*--------------------------------------------------------------\
 		| FftSharp                                                      |
 		\* ------------------------------------------------------------*/
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = SlowRunCount )]
 		public void FftSharp_FFT ()
 			{
-			var Buffer = new Complex[ComplexInputData.Length];
-
-			CopySourceData ( Buffer );
-
-			for ( int i = 0; i < RunCount; i++ )
-				FftSharp.FFT.Forward ( Buffer );
+			for ( int i = 0; i < SlowRunCount; i++ )
+				FftSharp.FFT.Forward ( _ComplexBuffer );
 			}
 
-		[Benchmark]
+		[Benchmark ( OperationsPerInvoke = SlowRunCount )]
 		public void FftSharp_FFT_Inverse ()
 			{
-			var Buffer = new Complex[ComplexInputData.Length];
-
-			CopySourceData ( Buffer );
-
-			for ( int i = 0; i < RunCount; i++ )
-				FftSharp.FFT.Inverse ( Buffer );
+			for ( int i = 0; i < SlowRunCount; i++ )
+				FftSharp.FFT.Inverse ( _ComplexBuffer );
 			}
-
 #endif
+
+		public void Dispose ()
+			{
+#if USE_ALIGNED
+			_IterationData?.Dispose ();
+			_IterationSplitRealData?.Dispose ();
+			_IterationSplitImaginaryData?.Dispose ();
+#endif
+			}
 		}
 	}

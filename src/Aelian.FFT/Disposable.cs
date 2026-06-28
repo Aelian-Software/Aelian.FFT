@@ -27,14 +27,57 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+using System;
+
 namespace Aelian.FFT;
 
-internal static class Constants
+/// <summary>
+/// Base class for disposable classes
+/// </summary>
+/// <typeparam name="T">The class that needs to be disposable</typeparam>
+public abstract class Disposable<T> : IDisposable
+	where T : Disposable<T>
 	{
+	public bool IsDisposed { get; private set; }
+
+	protected virtual void Dispose ( bool disposing )
+		{
+		if ( !IsDisposed )
+			{
+			if ( disposing )
+				DisposeManagedState ();
+
+			FreeUnmanagedResources ();
+			NullLargeFields ();
+
+			IsDisposed = true;
+			}
+		}
+
 	/// <summary>
-	/// Determines the size of the precalculated tables and the the maximum FFT size. 
-	/// The maximum FFT size is 2^(MaxTableDepth-2) real-valued samples or 2^(MaxTableDepth-3) complex values.
+	/// Dispose managed state (managed objects)
 	/// </summary>
-	public const int MaxTableDepth = 18;
+	protected virtual void DisposeManagedState () { }
+
+	/// <summary>
+	/// Free unmanaged resources (unmanaged objects)
+	/// </summary>
+	protected virtual void FreeUnmanagedResources () { }
+
+	/// <summary>
+	/// Set large fields to null
+	/// </summary>
+	protected virtual void NullLargeFields () { }
+
+	~Disposable ()
+		{
+		Dispose ( disposing: false );
+		}
+
+	public void Dispose ()
+		{
+		Dispose ( disposing: true );
+		GC.SuppressFinalize ( this );
+		}
 	}
 

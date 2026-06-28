@@ -28,143 +28,207 @@
 // SOFTWARE.
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Numerics;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 
-namespace Aelian.FFT
+namespace Aelian.FFT;
+
+internal static class IndexReversal
 	{
-	internal static class IndexReversal
+	private static SwapPair[][]? _BitReverseSwapIndices;
+
+	private readonly struct SwapPair
 		{
-		private static int[][] _BitReverseIndices;
-		private static SwapPair[][] _BitReverseSwapIndices;
+		public readonly int IndexA;
+		public readonly int IndexB;
 
-		private struct SwapPair
+		public SwapPair ( int indexA, int indexB )
 			{
-			public readonly int IndexA;
-			public readonly int IndexB;
-
-			public SwapPair ( int indexA, int indexB )
-				{
-				IndexA = indexA;
-				IndexB = indexB;
-				}
-
-			public override string ToString () => $"{IndexA} <-> {IndexB}";
+			IndexA = indexA;
+			IndexB = indexB;
 			}
 
-		private static int ReverseBitOrder ( int input, int bitCount )
+		public override string ToString () => $"{IndexA} <-> {IndexB}";
+		}
+
+	private static int ReverseBitOrder ( int input, int bitCount )
+		{
+		int Output = 0;
+		int BitIndex = bitCount;
+
+		while ( BitIndex > 0 )
 			{
-			int Output = 0;
-			int BitIndex = bitCount;
+			if ( ( input & ( 1 << ( bitCount - BitIndex ) ) ) != 0 )
+				Output |= 1 << ( BitIndex - 1 );
 
-			while ( BitIndex > 0 )
-				{
-				if ( ( input & ( 1 << ( bitCount - BitIndex ) ) ) != 0 )
-					Output |= 1 << ( BitIndex - 1 );
-
-				BitIndex--;
-				}
-
-			return Output;
+			BitIndex--;
 			}
 
-		private static int FastReverseBitOrder ( int input, int bitCount )
-			{
-			int Output = 0;
-			
-			for ( int i = 0; i < bitCount; i++ )
-				{
-				Output = ( Output << 1 ) | ( input & 1 );
-				input >>= 1;
-				}
+		return Output;
+		}
 
-			return Output;
+	private static int FastReverseBitOrder ( int input, int bitCount )
+		{
+		int Output = 0;
+		
+		for ( int i = 0; i < bitCount; i++ )
+			{
+			Output = ( Output << 1 ) | ( input & 1 );
+			input >>= 1;
 			}
 
-		public static void CalculateBitReverseIndices ()
+		return Output;
+		}
+
+	public static void CalculateBitReverseIndices ()
+		{
+		_BitReverseSwapIndices = new SwapPair[Constants.MaxTableDepth][];
+
+		for ( int Depth = 0; Depth < Constants.MaxTableDepth; Depth++ )
 			{
-			_BitReverseIndices = new int[Constants.MaxTableDepth][];
-			_BitReverseSwapIndices = new SwapPair[Constants.MaxTableDepth][];
+			int N = 1 << Depth;
+			var Indices = new int[N];
+			var Swaps = new List<SwapPair> ( N / 2 );
 
-			for ( int i = 0; i < Constants.MaxTableDepth; i++ )
+			for ( int i = 0; i < N; i++ )
 				{
-				var N = 1 << i;
+				int Reversed = ReverseBitOrder ( i, Depth );
+				Indices[i] = Reversed;
 
-				_BitReverseIndices[i] = new int[N];
-				var Touched = new BitArray ( N );
-				var Swaps = new List<SwapPair> ();
-
-				for ( int j = 0; j < N; j++ )
-					{
-					var NewIndex = ReverseBitOrder ( j, i );
-
-					_BitReverseIndices[i][j] = NewIndex;
-
-					if ( NewIndex != j && !Touched[NewIndex] && !Touched[j] )
-						Swaps.Add ( new SwapPair ( j, NewIndex ) );
-
-					_BitReverseIndices[i][j] = NewIndex;
-
-					Touched[j] = true;
-					Touched[NewIndex] = true;
-					}
-
-				_BitReverseSwapIndices[i] = Swaps.ToArray ();
+				if ( Reversed > i )
+					Swaps.Add ( new SwapPair ( i, Reversed ) );
 				}
+
+			_BitReverseSwapIndices[Depth] = Swaps.ToArray ();
 			}
+		}
 
-		/// <summary>
-		/// Shuffles the elements of two arrays so that each element ends up at the index that is the bit-reverse of its original index
-		/// </summary>
-		/// <typeparam name="T">The array type</typeparam>
-		/// <param name="arrayA">The first array</param>
-		/// <param name="arrayB">The second array</param>
-		/// <param name="logArraySize">The binary logarithm of the size of the arrays</param>
-		[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
-		public static void BitReverseArrayInPlace<T> ( Span<T> arrayA, Span<T> arrayB, int logArraySize )
+	/// <summary>
+	/// Shuffles the elements of two arrays so that each element ends up at the index that is the bit-reverse of its original index
+	/// </summary>
+	/// <typeparam name="T">The array type</typeparam>
+	/// <param name="arrayA">The first array</param>
+	/// <param name="arrayB">The second array</param>
+	/// <param name="logArraySize">The binary logarithm of the size of the arrays</param>
+	[MethodImpl ( MethodImplOptions.AggressiveInlining /*| MethodImplOptions.AggressiveOptimization*/ )]
+	public static unsafe void BitReverseArrayInPlace<T> ( Span<T> arrayA, Span<T> arrayB, int logArraySize )
+		where T : unmanaged
+		{
+		if ( _BitReverseSwapIndices is null )
+			throw new InvalidOperationException ( "IndexReversal.CalculateBitReverseIndices () has not yet been called" );
+
+		var BitReverseSwaps = _BitReverseSwapIndices[logArraySize];
+		var PairCount = BitReverseSwaps.Length;
+
+		fixed ( SwapPair* pPairs = BitReverseSwaps )
+		fixed ( T* pArrayA = arrayA )
+		fixed ( T* pArrayB = arrayB )
 			{
-			var BitReverseSwaps = _BitReverseSwapIndices[logArraySize];
+			var pPair = pPairs;
 
-			foreach ( var Swap in BitReverseSwaps )
+			for ( int i = 0; i < PairCount; i++, pPair++ )
 				{
-				var TmpA = arrayA[Swap.IndexA];
-				arrayA[Swap.IndexA] = arrayA[Swap.IndexB];
-				arrayA[Swap.IndexB] = TmpA;
+				var IndexA = pPair->IndexA;
+				var IndexB = pPair->IndexB;
 
-				var TmpB = arrayB[Swap.IndexA];
-				arrayB[Swap.IndexA] = arrayB[Swap.IndexB];
-				arrayB[Swap.IndexB] = TmpB;
-				}
-			}
+				var TmpA = pArrayA[IndexA];
+				pArrayA[IndexA] = pArrayA[IndexB];
+				pArrayA[IndexB] = TmpA;
 
-		/// <summary>
-		/// Shuffles the elements of two arrays so that each element ends up at the index that is the bit-reverse of its original index
-		/// </summary>
-		/// <typeparam name="T">The array type</typeparam>
-		/// <param name="arrayA">The first array</param>
-		/// <param name="arrayB">The second array</param>
-		/// <param name="logArraySize">The binary logarithm of the size of the arrays</param>
-		[MethodImpl ( MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization )]
-		public static void BitReverseArrayInPlaceNoLUT<T> ( Span<T> arrayA, Span<T> arrayB, int logArraySize )
-			{
-			for ( int i = 0; i < arrayA.Length; i++ )
-				{
-				var Inverse = FastReverseBitOrder ( i, logArraySize );
-
-				if ( Inverse <= i )
-					continue;
-
-				var TmpA = arrayA[i];
-				arrayA[i] = arrayA[Inverse];
-				arrayA[Inverse] = TmpA;
-
-				var TmpB = arrayB[i];
-				arrayB[i] = arrayB[Inverse];
-				arrayB[Inverse] = TmpB;
+				var TmpB = pArrayB[IndexA];
+				pArrayB[IndexA] = pArrayB[IndexB];
+				pArrayB[IndexB] = TmpB;
 				}
 			}
 		}
+
+	/// <summary>
+	/// Shuffles the elements of two double arrays so that each element ends up at the index that is the bit-reverse of its original index
+	/// </summary>
+	/// <param name="arrayA">The first array</param>
+	/// <param name="arrayB">The second array</param>
+	/// <param name="logArraySize">The binary logarithm of the size of the arrays</param>
+	[MethodImpl ( MethodImplOptions.AggressiveInlining /*| MethodImplOptions.AggressiveOptimization*/ )]
+	public static unsafe void BitReverseArrayInPlace ( Span<double> arrayA, Span<double> arrayB, int logArraySize )
+		{
+		if ( _BitReverseSwapIndices is null )
+			throw new InvalidOperationException ( "IndexReversal.CalculateBitReverseIndices () has not yet been called" );
+
+		var BitReverseSwaps = _BitReverseSwapIndices[logArraySize];
+		var PairCount = BitReverseSwaps.Length;
+
+		fixed ( SwapPair* pPairs = BitReverseSwaps )
+		fixed ( double* pArrayA = arrayA )
+		fixed ( double* pArrayB = arrayB )
+			{
+			var pPair = pPairs;
+
+			for ( int i = 0; i < PairCount; i++, pPair++ )
+				{
+				var IndexA = pPair->IndexA;
+				var IndexB = pPair->IndexB;
+
+				var TmpA = pArrayA[IndexA];
+				pArrayA[IndexA] = pArrayA[IndexB];
+				pArrayA[IndexB] = TmpA;
+
+				var TmpB = pArrayB[IndexA];
+				pArrayB[IndexA] = pArrayB[IndexB];
+				pArrayB[IndexB] = TmpB;
+				}
+			}
+		}
+
+	/// <summary>
+	/// Shuffles the elements of two arrays so that each element ends up at the index that is the bit-reverse of its original index
+	/// </summary>
+	/// <typeparam name="T">The array type</typeparam>
+	/// <param name="arrayA">The first array</param>
+	/// <param name="arrayB">The second array</param>
+	/// <param name="logArraySize">The binary logarithm of the size of the arrays</param>
+	[MethodImpl ( MethodImplOptions.AggressiveInlining /*| MethodImplOptions.AggressiveOptimization*/ )]
+	public static void BitReverseArrayInPlaceNoLut<T> (	Span<T> arrayA,	Span<T> arrayB,	int logArraySize )
+		where T : unmanaged
+		{
+		int N = 1 << logArraySize;
+
+		if ( (uint) N > (uint) arrayA.Length || (uint) N > (uint) arrayB.Length )
+			throw new ArgumentException ( "The spans are shorter than the transform size." );
+
+		ref T RefArrayA = ref System.Runtime.InteropServices.MemoryMarshal.GetReference ( arrayA );
+		ref T RefArrayB = ref System.Runtime.InteropServices.MemoryMarshal.GetReference ( arrayB );
+
+		int j = 0;
+
+		for ( int i = 1; i < N - 1; i++ )
+			{
+			int Bit = N >> 1;
+
+			while ( ( j & Bit ) != 0 )
+				{
+				j ^= Bit;
+				Bit >>= 1;
+				}
+
+			j ^= Bit;
+
+			if ( i >= j )
+				continue;
+
+			ref T AI = ref Unsafe.Add ( ref RefArrayA, i );
+			ref T AJ = ref Unsafe.Add ( ref RefArrayA, j );
+			
+			T TempA = AI;
+			AI = AJ;
+			AJ = TempA;
+
+			ref T BI = ref Unsafe.Add ( ref RefArrayB, i );
+			ref T BJ = ref Unsafe.Add ( ref RefArrayB, j );
+			
+			T TempB = BI;
+			BI = BJ;
+			BJ = TempB;
+			}
+		}
 	}
+
